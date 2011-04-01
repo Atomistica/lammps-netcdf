@@ -185,6 +185,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   global2index = NULL;
   global_dim = NULL;
   global_name = NULL;
+  global_id = NULL;
   global_var = NULL;
 }
 
@@ -209,11 +210,13 @@ DumpNC::~DumpNC()
   if (n_global > 0) {
     for (int i = 0; i < n_global; i++) {
       delete [] global_name[i];
+      if (global_id[i])  delete [] global_id[i];
     }
     delete [] global_type;
     delete [] global2index;
     delete [] global_dim;
     delete [] global_name;
+    delete [] global_id;
     delete [] global_var;
   }
 }
@@ -464,6 +467,10 @@ void DumpNC::write_header(int n)
 	else
 	  data = modify->fix[j]->compute_scalar();
       }
+      else if (global_type[i] == THIS_IS_A_VARIABLE) {
+	j = input->variable->find(global_id[i]);
+	data = input->variable->compute_equal(j);
+      }
 
       NCERR( nc_put_var1_double(ncid, global_var[i], start, &data) );
     }
@@ -574,6 +581,7 @@ int DumpNC::modify_param2(int narg, char **arg)
     global2index = new int[n_global];
     global_dim = new int[n_global];
     global_name = new char*[n_global];
+    global_id = new char*[n_global];
     global_var = new int[n_global];
 
     for (int iarg = 1; iarg < narg; iarg++) {
@@ -593,13 +601,13 @@ int DumpNC::modify_param2(int narg, char **arg)
 	error->all(errstr);
       }
 
+      global_id[iarg-1] = NULL;
+
       if (!strncmp(arg[iarg], "c_", 2)) {
 	int idim = -1;
 	char *ptr = strchr(suffix, '[');
-	if (ptr) {
-	  if (modify->compute[n]->vector_flag != 0)
-	    error->all("Dump modify compute ID does not compute vector");
 
+	if (ptr) {
 	  if (suffix[strlen(suffix)-1] != ']')
 	    error->all("DumpNC: Missing ']' in dump modify command");
 	  *ptr = '\0';
@@ -611,6 +619,10 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Could not find dump modify compute ID");
 	if (modify->compute[n]->peratom_flag != 0)
 	  error->all("Dump modify compute ID computes per-atom info");
+	if (idim >= 0 && modify->compute[n]->vector_flag == 0)
+	  error->all("Dump modify compute ID does not compute vector");
+	if (idim < 0 && modify->compute[n]->scalar_flag == 0)
+	  error->all("Dump modify compute ID does not compute scalar");
 
 	global_type[iarg-1] = THIS_IS_A_COMPUTE;
 	global_dim[iarg-1] = idim-1;
@@ -621,10 +633,8 @@ int DumpNC::modify_param2(int narg, char **arg)
       else if (!strncmp(arg[iarg], "f_", 2)) {
 	int idim = -1;
 	char *ptr = strchr(suffix, '[');
-	if (ptr) {
-	  if (modify->fix[n]->vector_flag != 0)
-	    error->all("Dump modify fix ID does not compute vector");
 
+	if (ptr) {
 	  if (suffix[strlen(suffix)-1] != ']')
 	    error->all("DumpNC: Missing ']' in dump modify command");
 	  *ptr = '\0';
@@ -636,12 +646,31 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Could not find dump modify fix ID");
 	if (modify->fix[n]->peratom_flag != 0)
 	  error->all("Dump modify fix ID computes per-atom info");
+	if (idim >= 0 && modify->fix[n]->vector_flag == 0)
+	  error->all("Dump modify fix ID does not compute vector");
+	if (idim < 0 && modify->fix[n]->scalar_flag == 0)
+	  error->all("Dump modify fix ID does not compute vector");
 
 	global_type[iarg-1] = THIS_IS_A_FIX;
 	global_dim[iarg-1] = idim-1;
 	global2index[iarg-1] = n;
 	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
 	strcpy(global_name[iarg-1], arg[iarg]);
+      }
+      else if (!strncmp(arg[iarg], "v_", 2)) {
+	n = input->variable->find(suffix);
+	if (n < 0)
+	  error->all("Could not find dump modify variable ID");
+	if (!input->variable->equalstyle(n))
+	  error->all("Dump modify variable must be of style equal");
+
+	global_type[iarg-1] = THIS_IS_A_VARIABLE;
+	global_dim[iarg-1] = 1;
+	global2index[iarg-1] = n;
+	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
+	strcpy(global_name[iarg-1], arg[iarg]);
+	global_id[iarg-1] = new char[strlen(suffix)+1];
+	strcpy(global_id[iarg-1], suffix);
       }
       else {
 	char errstr[1024];

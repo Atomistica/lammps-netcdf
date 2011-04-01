@@ -47,6 +47,7 @@ class DumpNC : public DumpCustom {
   int *global_dim;             // dimension
   int *global2index;           // index in fix/compute list
   char **global_name;          // names
+  char **global_id;            // variable id
   int *global_var;             // NetCDF variable
 
   double **rbuf;               // buf of data lines for data lines rearrangemnt
