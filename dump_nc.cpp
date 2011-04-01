@@ -68,9 +68,11 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   // arrays for data rearrangement
 
   rbuf = NULL;
+  sort_flag = 1;
+  sortcol = 0;
 
   if (multiproc)
-    error->all("DumpNC: Multi-processor writes are not supported.");
+    error->all("DumpNC: Multi-processor writes are not (yet) supported.");
   if (multifile)
     error->all("DumpNC: Multiple files are not supported.");
 
@@ -247,6 +249,9 @@ void DumpNC::init_style()
 
 void DumpNC::openfile()
 {
+  // get total number of atoms
+  MPI_Allreduce(&atom->nlocal, &ntotal, 1, MPI_INT, MPI_SUM, world);
+
   if (me == 0) {
     int dims[NC_MAX_VAR_DIMS];
     size_t index[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
@@ -254,9 +259,6 @@ void DumpNC::openfile()
 
     if (singlefile_opened) return;
     singlefile_opened = 1;
-
-    // get total number of atoms
-    MPI_Allreduce(&atom->nlocal, &ntotal, 1, MPI_INT, MPI_SUM, world);
 
     NCERR( nc_create(filename, NC_64BIT_OFFSET, &ncid) );
     
@@ -336,13 +338,13 @@ void DumpNC::openfile()
     // units
     if (!strcmp(update->unit_style, "lj")) {
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "lj") );
+			     2, "lj") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "lj") );
+			     2, "lj") );
     }
     else if (!strcmp(update->unit_style, "real")) {
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "femtosecond") );
+			     11, "femtosecond") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
 			     8, "Angstrom") );
     }
@@ -350,25 +352,25 @@ void DumpNC::openfile()
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
 			     10, "picosecond") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "angstrom") );
+			     8, "Angstrom") );
     }
     else if (!strcmp(update->unit_style, "si")) {
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "second") );
+			     6, "second") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "meter") );
+			     5, "meter") );
     }
     else if (!strcmp(update->unit_style, "cgs")) {
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "second") );
+			     6, "second") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "centimeter") );
+			     10, "centimeter") );
     }
     else if (!strcmp(update->unit_style, "electron")) {
       NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "femtosecond") );
+			     11, "femtosecond") );
       NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "Bohr") );
+			     4, "Bohr") );
     }
     else {
       char errstr[1024];
@@ -419,8 +421,13 @@ void DumpNC::openfile()
 
 void DumpNC::write_header(int n)
 {
+  size_t start[2];
+
+  start[0] = framei;
+  start[1] = 0;
+
   if (me == 0) {
-    size_t start[2], count[2];
+    size_t count[2];
     double time, cell_lengths[3], cell_angles[3];
 
     time = update->ntimestep;
@@ -434,11 +441,9 @@ void DumpNC::write_header(int n)
       cell_angles[2] = 90;
     }
     else {
-      error->all("Implement me!\n");
+      error->all("DumpNC::write_header: Implement support for triclinic\n");
     }
 
-    start[0] = framei;
-    start[1] = 0;
     count[0] = 1;
     count[1] = 3;
     NCERR( nc_put_var1_double(ncid, time_var, start, &time) );
@@ -446,38 +451,39 @@ void DumpNC::write_header(int n)
 			      cell_lengths) );
     NCERR( nc_put_vara_double(ncid, cell_angles_var, start, count,
 			      cell_angles) );
+  }
 
-    for (int i = 0; i < n_global; i++) {
-      double data;
-      int j = global2index[i];
-      int idim = global_dim[i];
+  for (int i = 0; i < n_global; i++) {
+    double data;
+    int j = global2index[i];
+    int idim = global_dim[i];
 
-      if (global_type[i] == THIS_IS_A_COMPUTE) {
-	if (idim >= 0) {
-	  modify->compute[j]->compute_vector();
-	  data = modify->compute[j]->vector[idim];
-	}
-	else
-	  data = modify->compute[j]->compute_scalar();
+    if (global_type[i] == THIS_IS_A_COMPUTE) {
+      if (idim >= 0) {
+	modify->compute[j]->compute_vector();
+	data = modify->compute[j]->vector[idim];
       }
-      else if (global_type[i] == THIS_IS_A_FIX) {
-	if (idim >= 0) {
-	  data = modify->fix[j]->compute_vector(idim);
-	}
-	else
-	  data = modify->fix[j]->compute_scalar();
+      else
+	data = modify->compute[j]->compute_scalar();
+    }
+    else if (global_type[i] == THIS_IS_A_FIX) {
+      if (idim >= 0) {
+	data = modify->fix[j]->compute_vector(idim);
       }
-      else if (global_type[i] == THIS_IS_A_VARIABLE) {
-	j = input->variable->find(global_id[i]);
-	data = input->variable->compute_equal(j);
-      }
-
-      NCERR( nc_put_var1_double(ncid, global_var[i], start, &data) );
+      else
+	data = modify->fix[j]->compute_scalar();
+    }
+    else if (global_type[i] == THIS_IS_A_VARIABLE) {
+      j = input->variable->find(global_id[i]);
+      data = input->variable->compute_equal(j);
     }
 
-    ndata = n;
-    blocki = 0;
+    if (me == 0)
+      NCERR( nc_put_var1_double(ncid, global_var[i], start, &data) );
   }
+
+  ndata = n;
+  blocki = 0;
 }
 
 
