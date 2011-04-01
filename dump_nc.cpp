@@ -50,6 +50,10 @@ const char NC_CELL_ANGLES_STR[]   = "cell_angles";
 const char NC_UNITS_STR[]         = "units";
 const char NC_SCALE_FACTOR_STR[]  = "scale_factor";
 
+const int MAX_DIMS           = 10;
+const int THIS_IS_A_FIX      = -1;
+const int THIS_IS_A_COMPUTE  = -2;
+
 /* ---------------------------------------------------------------------- */
 
 #define NCERR(x) ncerr(x, __LINE__)
@@ -77,55 +81,98 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 
   nnc = 0;
   for (int iarg = 5; iarg < narg; iarg++) {
+    int i = iarg-5;
     int idim = 0;
     int ndims = 1;
     char mangled[1024];
 
+    strcpy(mangled, arg[iarg]);
+
     // name mangling
     // in the AMBER specification
-    if (!strcmp(arg[iarg], "x") || !strcmp(arg[iarg], "y") ||
-	!strcmp(arg[iarg], "z")) {
+    if (!strcmp(mangled, "x") || !strcmp(mangled, "y") ||
+	!strcmp(mangled, "z")) {
+      idim = mangled[0] - 'x';
+      ndims = 3;
       strcpy(mangled, "coordinates");
-      idim = arg[iarg][0] - 'x';
-      ndims = 3;
     }
-    else if (!strcmp(arg[iarg], "vx") || !strcmp(arg[iarg], "vy") ||
-	     !strcmp(arg[iarg], "vz")) {
+    else if (!strcmp(mangled, "vx") || !strcmp(mangled, "vy") ||
+	     !strcmp(mangled, "vz")) {
+      idim = mangled[1] - 'x';
+      ndims = 3;
       strcpy(mangled, "velocities");
-      idim = arg[iarg][1] - 'x';
-      ndims = 3;
     }
-    // extensions
-    else if (!strcmp(arg[iarg], "xs") || !strcmp(arg[iarg], "ys") ||
-	!strcmp(arg[iarg], "zs")) {
+    // extensions to the AMBER specification
+    else if (!strcmp(mangled, "type")) {
+      strcpy(mangled, "Z");
+    }
+    else if (!strcmp(mangled, "xs") || !strcmp(mangled, "ys") ||
+	!strcmp(mangled, "zs")) {
+      idim = mangled[0] - 'x';
+      ndims = 3;
       strcpy(mangled, "scaled_coordinates");
-      idim = arg[iarg][0] - 'x';
+    }
+    else if (!strcmp(mangled, "xu") || !strcmp(mangled, "yu") ||
+	!strcmp(mangled, "zu")) {
+      idim = mangled[0] - 'x';
       ndims = 3;
+      strcpy(mangled, "unwrapped_coordinates");
     }
-    else {
-      strcpy(mangled, arg[iarg]);
+    else if (!strcmp(mangled, "fx") || !strcmp(mangled, "fy") ||
+	     !strcmp(mangled, "fz")) {
+      idim = mangled[1] - 'x';
+      ndims = 3;
+      strcpy(mangled, "forces");
     }
-
-    // find mangled name
-    int i = -1;
-    for (int j = 0; j < nnc && i < 0; j++) {
-      if (!strcmp(ncname[j], mangled)) {
-	i = j;
+    else if (!strcmp(mangled, "mux") || !strcmp(mangled, "muy") ||
+	     !strcmp(mangled, "muz")) {
+      idim = mangled[2] - 'x';
+      ndims = 3;
+      strcpy(mangled, "mu");
+    }
+    else if (!strncmp(mangled, "c_", 2)) {
+      char *ptr = strchr(mangled, '[');
+      if (ptr) {
+	if (mangled[strlen(mangled)-1] != ']')
+	  error->all("DumpNC: Missing ']' in dump command");
+	*ptr = '\0';
+	idim = ptr[1] - '1';
+	ndims = THIS_IS_A_COMPUTE;
+      }
+    }
+    else if (!strncmp(mangled, "f_", 2)) {
+      char *ptr = strchr(mangled, '[');
+      if (ptr) {
+	if (mangled[strlen(mangled)-1] != ']')
+	  error->all("DumpNC: Missing ']' in dump command");
+	*ptr = '\0';
+	idim = ptr[1] - '1';
+	ndims = THIS_IS_A_FIX;
       }
     }
 
-    if (i < 0) {
-      i = nnc;
-      ncname[i] = new char[strlen(mangled)+1];
-      ncdims[i] = ndims;
-      nc2field[i] = new int[ndims];
-      strcpy(ncname[i], mangled);
+    // find mangled name
+    int inc = -1;
+    for (int j = 0; j < nnc && inc < 0; j++) {
+      if (!strcmp(ncname[j], mangled)) {
+	inc = j;
+      }
+    }
+
+    if (inc < 0) {
+      inc = nnc;
+      ncname[inc] = new char[strlen(mangled)+1];
+      ncdims[inc] = ndims;
+      if (ndims < 0) ndims = MAX_DIMS;
+      nc2field[inc] = new int[ndims];
+      for (int j = 0; j < ndims; j++) {
+	nc2field[inc][j] = i;
+      }
+      strcpy(ncname[inc], mangled);
       nnc++;
     }
 
-    if (nc2field[i]) {
-      nc2field[i][idim] = i;
-    }
+    nc2field[inc][idim] = i;
   }
 
   ncvar = new int[nnc];
@@ -152,6 +199,28 @@ DumpNC::~DumpNC()
   delete [] ncname;
   delete [] ncdims;
   delete [] nc2field;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpNC::init_style()
+{
+  DumpCustom::init_style();
+
+  // now the computes and fixes have been initialized, so we can query
+  // for the size of vector quantities
+  for (int i = 0; i < nnc; i++) {
+    if (ncdims[i] == THIS_IS_A_COMPUTE) {
+      ncdims[i] = compute[field2index[nc2field[i][0]]]->size_vector;
+      if (ncdims[i] > MAX_DIMS)
+	error->all("DumpNC::init_style: ncdims[i] > MAX_DIMS");
+    }
+    else if (ncdims[i] == THIS_IS_A_FIX) {
+      ncdims[i] = fix[field2index[nc2field[i][0]]]->size_vector;
+      if (ncdims[i] > MAX_DIMS)
+	error->all("DumpNC::init_style: ncdims[i] > MAX_DIMS");
+    }
+  }
 }
 
 /* ---------------------------------------------------------------------- */

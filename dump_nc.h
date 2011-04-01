@@ -62,6 +62,7 @@ class DumpNC : public DumpCustom {
   int cell_lengths_var;
   int cell_angles_var;
 
+  void init_style();
   void openfile();
   void write_header(int);
   void write_data(int, double *);
