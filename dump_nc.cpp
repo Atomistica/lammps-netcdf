@@ -31,6 +31,7 @@
 #include "memory.h"
 #include "error.h"
 #include "universe.h"
+#include "update.h"
 
 using namespace LAMMPS_NS;
 
@@ -377,6 +378,33 @@ void DumpNC::openfile()
 
 void DumpNC::write_header(int n)
 {
+  size_t start[2], count[2];
+  double time, cell_lengths[3], cell_angles[3];
+
+  time = update->ntimestep*update->dt;
+  if (domain->triclinic == 0) {
+    cell_lengths[0] = domain->xprd;
+    cell_lengths[1] = domain->yprd;
+    cell_lengths[2] = domain->zprd;
+
+    cell_angles[0] = 90;
+    cell_angles[1] = 90;
+    cell_angles[2] = 90;
+  }
+  else {
+    error->all("Implement me!\n");
+  }
+
+  start[0] = framei;
+  start[1] = 0;
+  count[0] = 1;
+  count[1] = 3;
+  NCERR( nc_put_var1_double(ncid, cell_lengths_var, start, &time) );
+  NCERR( nc_put_vara_double(ncid, cell_lengths_var, start, count,
+			    cell_lengths) );
+  NCERR( nc_put_vara_double(ncid, cell_angles_var, start, count,
+			    cell_angles) );
+
   ndata = n;
   blocki = 0;
 }
