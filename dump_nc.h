@@ -30,20 +30,26 @@ class DumpNC : public DumpCustom {
   ~DumpNC();
 
  private:
-  int framei;                // current frame index
-  int blocki;                // current block index
-  int ndata;                 // number of data blocks to expect
+  int framei;                  // current frame index
+  int blocki;                  // current block index
+  int ndata;                   // number of data blocks to expect
 
-  int ntypes;                // # of atom types
-  char **typenames;	     // array of element names for each type
+  int ntypes;                  // # of atom types
 
-  int nnc;                   // # of netcdf properties
-  int *ncdims;               // # of dimensions for each netcdf property
-  int **nc2field;              // NC auxiliary to field mapping
-  char **ncname;             // mangled names
-  int *ncvar;                // NetCDF variables for auxiliary properties
+  int n_perat;                 // # of netcdf per-atom properties
+  int *perat_dims;             // # of dimensions for each netcdf property
+  int **perat2field;           // NC auxiliary to field mapping
+  char **perat_name;           // mangled names
+  int *perat_var;              // NetCDF variables for auxiliary properties
 
-  double **rbuf;             // buf of data lines for data lines rearrangement
+  int n_global;                // # of global netcdf (not per-atom) fix props
+  int *global_type;            // fix or compute
+  int *global_dim;             // dimension
+  int *global2index;           // index in fix/compute list
+  char **global_name;          // names
+  int *global_var;             // NetCDF variable
+
+  double **rbuf;               // buf of data lines for data lines rearrangemnt
 
   int ncid;
 
