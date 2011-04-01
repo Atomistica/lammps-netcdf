@@ -65,8 +65,6 @@ const int THIS_IS_A_VARIABLE = -3;
 DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   DumpCustom(lmp, narg, arg)
 {
-  ntypes = atom->ntypes;
-
   // arrays for data rearrangement
 
   rbuf = NULL;
@@ -247,7 +245,6 @@ void DumpNC::init_style()
 void DumpNC::openfile()
 {
   if (me == 0) {
-    int ntotal;
     int dims[NC_MAX_VAR_DIMS];
     size_t index[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
     double d[1];
@@ -616,7 +613,7 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Dump modify compute ID computes per-atom info");
 
 	global_type[iarg-1] = THIS_IS_A_COMPUTE;
-	global_dim[iarg-1] = idim;
+	global_dim[iarg-1] = idim-1;
 	global2index[iarg-1] = n;
 	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
 	strcpy(global_name[iarg-1], arg[iarg]);
@@ -641,7 +638,7 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Dump modify fix ID computes per-atom info");
 
 	global_type[iarg-1] = THIS_IS_A_FIX;
-	global_dim[iarg-1] = idim;
+	global_dim[iarg-1] = idim-1;
 	global2index[iarg-1] = n;
 	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
 	strcpy(global_name[iarg-1], arg[iarg]);
@@ -658,6 +655,64 @@ int DumpNC::modify_param2(int narg, char **arg)
 
     return narg;
   } else return 0;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpNC::write_prmtop()
+{
+  char fn[1024];
+  char tmp[81];
+  FILE *f;
+
+  strcpy(fn, filename);
+  strcat(fn, ".prmtop");
+
+  f = fopen(fn, "w");
+  fprintf(f, "%%VERSION  LAMMPS\n");
+  fprintf(f, "%%FLAG TITLE\n");
+  fprintf(f, "%%FORMAT(20a4)\n");
+  memset(tmp, ' ', 76);
+  tmp[76] = '\0';
+  fprintf(f, "NASN%s\n", tmp);
+
+  fprintf(f, "%%FLAG POINTERS\n");
+  fprintf(f, "%%FORMAT(10I8)\n");
+  fprintf(f, "%8i", ntotal);
+  for (int i = 0; i < 11; i++)
+    fprintf(f, "%8i", 0);
+  fprintf(f, "\n");
+  for (int i = 0; i < 12; i++)
+    fprintf(f, "%8i", 0);
+  fprintf(f, "\n");
+  for (int i = 0; i < 6; i++)
+    fprintf(f, "%8i", 0);
+  fprintf(f, "\n");
+
+  fprintf(f, "%%FLAG ATOM_NAME\n");
+  fprintf(f, "%%FORMAT(20a4)\n");
+  for (int i = 0; i < ntotal; i++) {
+    fprintf(f, "%4s", "He");
+    if ((i+1) % 20 == 0)
+      fprintf(f, "\n");
+  }
+
+  fprintf(f, "%%FLAG CHARGE\n");
+  fprintf(f, "%%FORMAT(5E16.5)\n");
+  for (int i = 0; i < ntotal; i++) {
+    fprintf(f, "%16.5e", 0.0);
+    if ((i+1) % 5 == 0)
+      fprintf(f, "\n");
+  }
+
+  fprintf(f, "%%FLAG MASS\n");
+  fprintf(f, "%%FORMAT(5E16.5)\n");
+  for (int i = 0; i < ntotal; i++) {
+    fprintf(f, "%16.5e", 1.0);
+    if ((i+1) % 5 == 0)
+      fprintf(f, "\n");
+  }
+  fclose(f);
 }
 
 /* ---------------------------------------------------------------------- */

@@ -34,7 +34,7 @@ class DumpNC : public DumpCustom {
   int blocki;                  // current block index
   int ndata;                   // number of data blocks to expect
 
-  int ntypes;                  // # of atom types
+  int ntotal;                  // # of atoms
 
   int n_perat;                 // # of netcdf per-atom properties
   int *perat_dims;             // # of dimensions for each netcdf property
@@ -72,6 +72,7 @@ class DumpNC : public DumpCustom {
   void openfile();
   void write_header(int);
   void write_data(int, double *);
+  void write_prmtop();
 
   int modify_param2(int, char **);
 
