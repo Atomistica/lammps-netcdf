@@ -52,6 +52,10 @@ class DumpNC : public DumpCustom {
 
   double **rbuf;               // buf of data lines for data lines rearrangemnt
 
+  int n_buffer;                // size of buffer
+  int *int_buffer;             // buffer for passing data to netcdf
+  double *double_buffer;       // buffer for passing data to netcdf
+
   int ncid;
 
   int frame_dim;
@@ -69,7 +73,6 @@ class DumpNC : public DumpCustom {
   int cell_lengths_var;
   int cell_angles_var;
 
-  void init_style();
   void openfile();
   void write_header(int);
   void write_data(int, double *);

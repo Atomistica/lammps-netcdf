@@ -189,6 +189,10 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   global_name = NULL;
   global_id = NULL;
   global_var = NULL;
+
+  n_buffer = 0;
+  int_buffer = NULL;
+  double_buffer = NULL;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -221,34 +225,37 @@ DumpNC::~DumpNC()
     delete [] global_id;
     delete [] global_var;
   }
-}
 
-/* ---------------------------------------------------------------------- */
-
-void DumpNC::init_style()
-{
-  DumpCustom::init_style();
-
-  // now the computes and fixes have been initialized, so we can query
-  // for the size of vector quantities
-  for (int i = 0; i < n_perat; i++) {
-    if (perat_dims[i] == THIS_IS_A_COMPUTE) {
-      perat_dims[i] = compute[field2index[perat2field[i][0]]]->size_vector;
-      if (perat_dims[i] > MAX_DIMS)
-	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
-    }
-    else if (perat_dims[i] == THIS_IS_A_FIX) {
-      perat_dims[i] = fix[field2index[perat2field[i][0]]]->size_vector;
-      if (perat_dims[i] > MAX_DIMS)
-	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
-    }
-  }
+  if (int_buffer) memory->sfree(int_buffer);
+  if (double_buffer) memory->sfree(double_buffer);
 }
 
 /* ---------------------------------------------------------------------- */
 
 void DumpNC::openfile()
 {
+  // now the computes and fixes have been initialized, so we can query
+  // for the size of vector quantities
+  for (int i = 0; i < n_perat; i++) {
+    if (perat_dims[i] == THIS_IS_A_COMPUTE) {
+      int j = field2index[perat2field[i][0]];
+      if (!fix[j]->peratom_flag)
+	error->all("DumpNC::init_style: compute does not provide per atom "
+		   "data");
+      perat_dims[i] = compute[j]->size_peratom_cols;
+      if (perat_dims[i] > MAX_DIMS)
+	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
+    }
+    else if (perat_dims[i] == THIS_IS_A_FIX) {
+      int j = field2index[perat2field[i][0]];
+      if (!fix[j]->peratom_flag)
+	error->all("DumpNC::init_style: fix does not provide per atom data");
+      perat_dims[i] = fix[j]->size_peratom_cols;
+      if (perat_dims[i] > MAX_DIMS)
+	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
+    }
+  }
+
   // get total number of atoms
   MPI_Allreduce(&atom->nlocal, &ntotal, 1, MPI_INT, MPI_SUM, world);
 
@@ -494,11 +501,25 @@ void DumpNC::write_header(int n)
 
 void DumpNC::write_data(int n, double *mybuf)
 {
-  int int_data[n];
-  double double_data[n];
-
   size_t start[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
   ptrdiff_t stride[NC_MAX_VAR_DIMS];
+
+  if (!int_buffer) {
+    n_buffer = n;
+    int_buffer = (int *)
+      memory->smalloc(n*sizeof(int), "DumpNC::int_buffer");
+    double_buffer = (double *)
+      memory->smalloc(n*sizeof(double), "DumpNC::double_buffer");
+  }
+
+  if (n > n_buffer) {
+    n_buffer = n;
+    int_buffer = (int *)
+      memory->srealloc(int_buffer, n*sizeof(int), "DumpNC::int_buffer");
+    double_buffer = (double *)
+      memory->srealloc(double_buffer, n*sizeof(double),
+		       "DumpNC::double_buffer");
+  }
 
   start[0] = framei;
   start[1] = blocki;
@@ -523,21 +544,21 @@ void DumpNC::write_data(int n, double *mybuf)
 	  iaux = perat2field[i][idim];
 
 	  for (int j = 0; j < n; j++, iaux+=size_one) {
-	    int_data[j] = mybuf[iaux];
+	    int_buffer[j] = mybuf[iaux];
 	  }
       
 	  start[2] = idim;
 	  NCERR( nc_put_vars_int(ncid, perat_var[i], start, count, stride,
-				 int_data) );
+				 int_buffer) );
 	}
       }
       else {
 	for (int j = 0; j < n; j++, iaux+=size_one) {
-	  int_data[j] = mybuf[iaux];
+	  int_buffer[j] = mybuf[iaux];
 	}
 
 	NCERR( nc_put_vara_int(ncid, perat_var[i], start, count,
-			       int_data) );
+			       int_buffer) );
       }
     }
     else {
@@ -548,21 +569,21 @@ void DumpNC::write_data(int n, double *mybuf)
 	  iaux = perat2field[i][idim];
 
 	  for (int j = 0; j < n; j++, iaux+=size_one) {
-	    double_data[j] = mybuf[iaux];
+	    double_buffer[j] = mybuf[iaux];
 	  }
       
 	  start[2] = idim;
 	  NCERR( nc_put_vars_double(ncid, perat_var[i], start, count, stride,
-				    double_data) );
+				    double_buffer) );
 	}
       }
       else {
 	for (int j = 0; j < n; j++, iaux+=size_one) {
-	  double_data[j] = mybuf[iaux];
+	  double_buffer[j] = mybuf[iaux];
 	}
 
 	NCERR( nc_put_vara_double(ncid, perat_var[i], start, count,
-				   double_data) );
+				   double_buffer) );
       }
     }
   }
@@ -631,7 +652,7 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Dump modify compute ID does not compute scalar");
 
 	global_type[iarg-1] = THIS_IS_A_COMPUTE;
-	global_dim[iarg-1] = idim-1;
+	global_dim[iarg-1] = idim;
 	global2index[iarg-1] = n;
 	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
 	strcpy(global_name[iarg-1], arg[iarg]);
@@ -658,7 +679,7 @@ int DumpNC::modify_param2(int narg, char **arg)
 	  error->all("Dump modify fix ID does not compute vector");
 
 	global_type[iarg-1] = THIS_IS_A_FIX;
-	global_dim[iarg-1] = idim-1;
+	global_dim[iarg-1] = idim;
 	global2index[iarg-1] = n;
 	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
 	strcpy(global_name[iarg-1], arg[iarg]);
