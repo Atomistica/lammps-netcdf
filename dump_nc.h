@@ -71,7 +71,6 @@ class DumpNC : public DumpCustom {
 
   int n_buffer;                // size of buffer
   int *int_buffer;             // buffer for passing data to netcdf
-  float *float_buffer;         // buffer for passing data to netcdf
   double *double_buffer;       // buffer for passing data to netcdf
 
   int ncid;

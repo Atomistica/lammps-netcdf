@@ -185,7 +185,6 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 
   n_buffer = 0;
   int_buffer = NULL;
-  float_buffer = NULL;
   double_buffer = NULL;
 
   double_precision = false;
@@ -205,7 +204,6 @@ DumpNC::~DumpNC()
     delete [] perframe;
 
   if (int_buffer) memory->sfree(int_buffer);
-  if (float_buffer) memory->sfree(float_buffer);
   if (double_buffer) memory->sfree(double_buffer);
 }
 
