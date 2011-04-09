@@ -76,12 +76,10 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   if (multifile)
     error->all("DumpNC: Multiple files are not supported.");
 
-  perat_name = new char*[nfield];
-  perat_dims = new int[nfield];
-  perat2field = new int*[nfield];
+  perat = new nc_perat_t[nfield];
 
   for (int i = 0; i < nfield; i++) {
-    perat_dims[i] = 0;
+    perat[i].dims = 0;
   }
 
   n_perat = 0;
@@ -90,6 +88,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     int idim = 0;
     int ndims = 1;
     char mangled[1024];
+    bool constant = false;
 
     strcpy(mangled, arg[iarg]);
 
@@ -110,6 +109,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     // extensions to the AMBER specification
     else if (!strcmp(mangled, "type")) {
       strcpy(mangled, "Z");
+      constant = true;
     }
     else if (!strcmp(mangled, "xs") || !strcmp(mangled, "ys") ||
 	!strcmp(mangled, "zs")) {
@@ -159,40 +159,36 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     // find mangled name
     int inc = -1;
     for (int j = 0; j < n_perat && inc < 0; j++) {
-      if (!strcmp(perat_name[j], mangled)) {
+      if (!strcmp(perat[j].name, mangled)) {
 	inc = j;
       }
     }
 
     if (inc < 0) {
       inc = n_perat;
-      perat_name[inc] = new char[strlen(mangled)+1];
-      perat_dims[inc] = ndims;
+      perat[inc].dims = ndims;
       if (ndims < 0) ndims = MAX_DIMS;
-      perat2field[inc] = new int[ndims];
       for (int j = 0; j < ndims; j++) {
-	perat2field[inc][j] = i;
+	perat[inc].field[j] = i;
       }
-      strcpy(perat_name[inc], mangled);
+      strcpy(perat[inc].name, mangled);
       n_perat++;
     }
 
-    perat2field[inc][idim] = i;
+    perat[inc].constant = constant;
+    perat[inc].dumped = false;
+    perat[inc].field[idim] = i;
   }
 
-  perat_var = new int[n_perat];
-
-  n_global = 0;
-  global_type = NULL;
-  global2index = NULL;
-  global_dim = NULL;
-  global_name = NULL;
-  global_id = NULL;
-  global_var = NULL;
+  n_perframe = 0;
+  perframe = NULL;
 
   n_buffer = 0;
   int_buffer = NULL;
+  float_buffer = NULL;
   double_buffer = NULL;
+
+  double_precision = false;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -204,29 +200,12 @@ DumpNC::~DumpNC()
 
   if (rbuf) memory->destroy_2d_double_array(rbuf);
 
-  for (int i = 0; i < n_perat; i++) {
-    delete [] perat_name[i];
-    delete [] perat2field[i];
-  }
-  delete [] perat_var;
-  delete [] perat_name;
-  delete [] perat_dims;
-  delete [] perat2field;
-
-  if (n_global > 0) {
-    for (int i = 0; i < n_global; i++) {
-      delete [] global_name[i];
-      if (global_id[i])  delete [] global_id[i];
-    }
-    delete [] global_type;
-    delete [] global2index;
-    delete [] global_dim;
-    delete [] global_name;
-    delete [] global_id;
-    delete [] global_var;
-  }
+  delete [] perat;
+  if (n_perframe > 0)
+    delete [] perframe;
 
   if (int_buffer) memory->sfree(int_buffer);
+  if (float_buffer) memory->sfree(float_buffer);
   if (double_buffer) memory->sfree(double_buffer);
 }
 
@@ -237,22 +216,22 @@ void DumpNC::openfile()
   // now the computes and fixes have been initialized, so we can query
   // for the size of vector quantities
   for (int i = 0; i < n_perat; i++) {
-    if (perat_dims[i] == THIS_IS_A_COMPUTE) {
-      int j = field2index[perat2field[i][0]];
+    if (perat[i].dims == THIS_IS_A_COMPUTE) {
+      int j = field2index[perat[i].field[0]];
       if (!fix[j]->peratom_flag)
 	error->all("DumpNC::init_style: compute does not provide per atom "
 		   "data");
-      perat_dims[i] = compute[j]->size_peratom_cols;
-      if (perat_dims[i] > MAX_DIMS)
-	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
+      perat[i].dims = compute[j]->size_peratom_cols;
+      if (perat[i].dims > MAX_DIMS)
+	error->all("DumpNC::init_style: perat[i].dims > MAX_DIMS");
     }
-    else if (perat_dims[i] == THIS_IS_A_FIX) {
-      int j = field2index[perat2field[i][0]];
+    else if (perat[i].dims == THIS_IS_A_FIX) {
+      int j = field2index[perat[i].field[0]];
       if (!fix[j]->peratom_flag)
 	error->all("DumpNC::init_style: fix does not provide per atom data");
-      perat_dims[i] = fix[j]->size_peratom_cols;
-      if (perat_dims[i] > MAX_DIMS)
-	error->all("DumpNC::init_style: perat_dims[i] > MAX_DIMS");
+      perat[i].dims = fix[j]->size_peratom_cols;
+      if (perat[i].dims > MAX_DIMS)
+	error->all("DumpNC::init_style: perat[i].dims > MAX_DIMS");
     }
   }
 
@@ -307,28 +286,41 @@ void DumpNC::openfile()
       nc_type xtype;
 
       // Type mangling
-      if (vtype[perat2field[i][0]] == INT) {
+      if (vtype[perat[i].field[0]] == INT) {
 	xtype = NC_INT;
       }
       else {
-	xtype = NC_DOUBLE;
+	if (double_precision)
+	  xtype = NC_DOUBLE;
+	else
+	  xtype = NC_FLOAT;
       }
 
-      if (perat_dims[i] == 3) {
-	// this is needed to store x-, y- and z-coordinates
-	NCERR( nc_def_var(ncid, perat_name[i], xtype, 3, dims,
-			  &perat_var[i]) );
+      if (perat[i].constant) {
+	// this quantity will only be written once
+	if (perat[i].dims == 3)
+	  // this is needed to store x-, y- and z-coordinates
+	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+			    &perat[i].var) );
+	else
+	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
+			    &perat[i].var) );
       }
       else {
-	NCERR( nc_def_var(ncid, perat_name[i], xtype, 2, dims,
-			  &perat_var[i]) );
+	if (perat[i].dims == 3)
+	  // this is needed to store x-, y- and z-coordinates
+	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+			    &perat[i].var) );
+	else
+	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
+			    &perat[i].var) );
       }
     }
 
-    // global variables
-    for (int i = 0; i < n_global; i++) {
-      NCERR( nc_def_var(ncid, global_name[i], NC_DOUBLE, 1, dims,
-			&global_var[i]) );
+    // perframe variables
+    for (int i = 0; i < n_perframe; i++) {
+      NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
+			&perframe[i].var) );
     }
 
     // attributes
@@ -460,12 +452,12 @@ void DumpNC::write_header(int n)
 			      cell_angles) );
   }
 
-  for (int i = 0; i < n_global; i++) {
+  for (int i = 0; i < n_perframe; i++) {
     double data;
-    int j = global2index[i];
-    int idim = global_dim[i];
+    int j = perframe[i].index;
+    int idim = perframe[i].dim;
 
-    if (global_type[i] == THIS_IS_A_COMPUTE) {
+    if (perframe[i].type == THIS_IS_A_COMPUTE) {
       if (idim >= 0) {
 	modify->compute[j]->compute_vector();
 	data = modify->compute[j]->vector[idim];
@@ -473,20 +465,20 @@ void DumpNC::write_header(int n)
       else
 	data = modify->compute[j]->compute_scalar();
     }
-    else if (global_type[i] == THIS_IS_A_FIX) {
+    else if (perframe[i].type == THIS_IS_A_FIX) {
       if (idim >= 0) {
 	data = modify->fix[j]->compute_vector(idim);
       }
       else
 	data = modify->fix[j]->compute_scalar();
     }
-    else if (global_type[i] == THIS_IS_A_VARIABLE) {
-      j = input->variable->find(global_id[i]);
+    else if (perframe[i].type == THIS_IS_A_VARIABLE) {
+      j = input->variable->find(perframe[i].id);
       data = input->variable->compute_equal(j);
     }
 
     if (me == 0)
-      NCERR( nc_put_var1_double(ncid, global_var[i], start, &data) );
+      NCERR( nc_put_var1_double(ncid, perframe[i].var, start, &data) );
   }
 
   ndata = n;
@@ -534,22 +526,32 @@ void DumpNC::write_data(int n, double *mybuf)
   stride[2] = 3;
 
   for (int i = 0; i < n_perat; i++) {
-    int iaux = perat2field[i][0];
+    int iaux = perat[i].field[0];
 
     if (vtype[iaux] == INT) {
       // integers
-      if (perat_dims[i] == 3) {
+      if (perat[i].dims == 3) {
 
 	for (int idim = 0; idim < 3; idim++) {
-	  iaux = perat2field[i][idim];
+	  iaux = perat[i].field[idim];
 
 	  for (int j = 0; j < n; j++, iaux+=size_one) {
 	    int_buffer[j] = mybuf[iaux];
 	  }
       
 	  start[2] = idim;
-	  NCERR( nc_put_vars_int(ncid, perat_var[i], start, count, stride,
-				 int_buffer) );
+
+	  if (perat[i].constant) {
+	    if (!perat[i].dumped) {
+	      NCERR( nc_put_vars_int(ncid, perat[i].var,
+				     start+1, count+1, stride+1,
+				     int_buffer) );
+	      perat[i].dumped = true;
+	    }
+	  }
+	  else
+	    NCERR( nc_put_vars_int(ncid, perat[i].var, start, count, stride,
+				   int_buffer) );
 	}
       }
       else {
@@ -557,24 +559,42 @@ void DumpNC::write_data(int n, double *mybuf)
 	  int_buffer[j] = mybuf[iaux];
 	}
 
-	NCERR( nc_put_vara_int(ncid, perat_var[i], start, count,
-			       int_buffer) );
+	if (perat[i].constant) {
+	  if (!perat[i].dumped) {
+	    NCERR( nc_put_vara_int(ncid, perat[i].var, start+1, count+1,
+				   int_buffer) );
+	    perat[i].dumped = true;
+	  }
+	}
+	else
+	  NCERR( nc_put_vara_int(ncid, perat[i].var, start, count,
+				 int_buffer) );
       }
     }
     else {
       // doubles
-      if (perat_dims[i] == 3) {
+      if (perat[i].dims == 3) {
 
 	for (int idim = 0; idim < 3; idim++) {
-	  iaux = perat2field[i][idim];
+	  iaux = perat[i].field[idim];
 
 	  for (int j = 0; j < n; j++, iaux+=size_one) {
 	    double_buffer[j] = mybuf[iaux];
 	  }
       
 	  start[2] = idim;
-	  NCERR( nc_put_vars_double(ncid, perat_var[i], start, count, stride,
-				    double_buffer) );
+
+	  if (perat[i].constant) {
+	    if (!perat[i].dumped) {
+	      NCERR( nc_put_vars_double(ncid, perat[i].var,
+					start+1, count+1, stride+1,
+					double_buffer) );
+	      perat[i].dumped = true;
+	    }
+	  }
+	  else
+	    NCERR( nc_put_vars_double(ncid, perat[i].var, start, count, stride,
+				      double_buffer) );
 	}
       }
       else {
@@ -582,8 +602,16 @@ void DumpNC::write_data(int n, double *mybuf)
 	  double_buffer[j] = mybuf[iaux];
 	}
 
-	NCERR( nc_put_vara_double(ncid, perat_var[i], start, count,
-				   double_buffer) );
+	if (perat[i].constant) {
+	  if (!perat[i].dumped) {
+	    NCERR( nc_put_vara_double(ncid, perat[i].var, start+1, count+1,
+				      double_buffer) );
+	    perat[i].dumped = true;
+	  }
+	}
+	else
+	  NCERR( nc_put_vara_double(ncid, perat[i].var, start, count,
+				    double_buffer) );
       }
     }
   }
@@ -600,18 +628,20 @@ void DumpNC::write_data(int n, double *mybuf)
 
 int DumpNC::modify_param2(int narg, char **arg)
 {
-  if (strcmp(arg[0],"global") == 0) {
-    // "global" quantities, i.e. not per-atom stuff
+  int iarg = 0;
+  if (strcmp(arg[iarg],"double_precision") == 0) {
+    double_precision = true;
+    iarg++;
+  }
+  if (strcmp(arg[iarg],"global") == 0) {
+    // "perframe" quantities, i.e. not per-atom stuff
 
-    n_global = narg-1;
-    global_type = new int[n_global];
-    global2index = new int[n_global];
-    global_dim = new int[n_global];
-    global_name = new char*[n_global];
-    global_id = new char*[n_global];
-    global_var = new int[n_global];
+    iarg++;
 
-    for (int iarg = 1; iarg < narg; iarg++) {
+    n_perframe = narg-iarg;
+    perframe = new nc_perframe_t[n_perframe];
+
+    for (int i = 0; iarg < narg; iarg++, i++) {
       int n;
       char *suffix;
 
@@ -623,12 +653,10 @@ int DumpNC::modify_param2(int narg, char **arg)
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param2: global quantity '%s' must "
+	sprintf(errstr, "DumpNC::modify_param2: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
 	error->all(errstr);
       }
-
-      global_id[iarg-1] = NULL;
 
       if (!strncmp(arg[iarg], "c_", 2)) {
 	int idim = -1;
@@ -651,11 +679,10 @@ int DumpNC::modify_param2(int narg, char **arg)
 	if (idim < 0 && modify->compute[n]->scalar_flag == 0)
 	  error->all("Dump modify compute ID does not compute scalar");
 
-	global_type[iarg-1] = THIS_IS_A_COMPUTE;
-	global_dim[iarg-1] = idim;
-	global2index[iarg-1] = n;
-	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
-	strcpy(global_name[iarg-1], arg[iarg]);
+	perframe[i].type = THIS_IS_A_COMPUTE;
+	perframe[i].dim = idim;
+	perframe[i].index = n;
+	strcpy(perframe[i].name, arg[iarg]);
       }
       else if (!strncmp(arg[iarg], "f_", 2)) {
 	int idim = -1;
@@ -678,11 +705,10 @@ int DumpNC::modify_param2(int narg, char **arg)
 	if (idim < 0 && modify->fix[n]->scalar_flag == 0)
 	  error->all("Dump modify fix ID does not compute vector");
 
-	global_type[iarg-1] = THIS_IS_A_FIX;
-	global_dim[iarg-1] = idim;
-	global2index[iarg-1] = n;
-	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
-	strcpy(global_name[iarg-1], arg[iarg]);
+	perframe[i].type = THIS_IS_A_FIX;
+	perframe[i].dim = idim;
+	perframe[i].index = n;
+	strcpy(perframe[i].name, arg[iarg]);
       }
       else if (!strncmp(arg[iarg], "v_", 2)) {
 	n = input->variable->find(suffix);
@@ -691,17 +717,15 @@ int DumpNC::modify_param2(int narg, char **arg)
 	if (!input->variable->equalstyle(n))
 	  error->all("Dump modify variable must be of style equal");
 
-	global_type[iarg-1] = THIS_IS_A_VARIABLE;
-	global_dim[iarg-1] = 1;
-	global2index[iarg-1] = n;
-	global_name[iarg-1] = new char[strlen(arg[iarg])+1];
-	strcpy(global_name[iarg-1], arg[iarg]);
-	global_id[iarg-1] = new char[strlen(suffix)+1];
-	strcpy(global_id[iarg-1], suffix);
+	perframe[i].type = THIS_IS_A_VARIABLE;
+	perframe[i].dim = 1;
+	perframe[i].index = n;
+	strcpy(perframe[i].name, arg[iarg]);
+	strcpy(perframe[i].id, suffix);
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param2: global quantity '%s' must "
+	sprintf(errstr, "DumpNC::modify_param2: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
 	error->all(errstr);
       }

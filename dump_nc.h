@@ -24,6 +24,29 @@ DumpStyle(nc,DumpNC)
 
 namespace LAMMPS_NS {
 
+const int NC_FIELD_NAME_MAX = 20;
+
+// per-atoms quantities (positions, velocities, etc.)
+struct nc_perat_t {
+  int dims;                     // number of dimensions
+  int field[3];                 // field indices corresponding x,y,z-comp.
+  char name[NC_FIELD_NAME_MAX]; // field name
+  int var;                      // NetCDF variable
+
+  bool constant;                // is this property per file (not per frame)
+  bool dumped;                  // has this property been written
+};
+
+// per-frame quantities (variables, fixes or computes)
+struct nc_perframe_t {
+  char name[NC_FIELD_NAME_MAX]; // field name
+  int var;                      // NetCDF variable
+  int type;                     // variable, fix or compute
+  int index;                    // index in fix/compute list
+  int dim;                      // dimension
+  char id[NC_FIELD_NAME_MAX];   // variable id
+};
+
 class DumpNC : public DumpCustom {
  public:
   DumpNC(class LAMMPS *, int, char **);
@@ -37,23 +60,18 @@ class DumpNC : public DumpCustom {
   int ntotal;                  // # of atoms
 
   int n_perat;                 // # of netcdf per-atom properties
-  int *perat_dims;             // # of dimensions for each netcdf property
-  int **perat2field;           // NC auxiliary to field mapping
-  char **perat_name;           // mangled names
-  int *perat_var;              // NetCDF variables for auxiliary properties
+  nc_perat_t *perat;           // per-atom properties
 
-  int n_global;                // # of global netcdf (not per-atom) fix props
-  int *global_type;            // fix or compute
-  int *global_dim;             // dimension
-  int *global2index;           // index in fix/compute list
-  char **global_name;          // names
-  char **global_id;            // variable id
-  int *global_var;             // NetCDF variable
+  int n_perframe;              // # of global netcdf (not per-atom) fix props
+  nc_perframe_t *perframe;     // global properties
 
   double **rbuf;               // buf of data lines for data lines rearrangemnt
 
+  bool double_precision;       // write everything as double precision
+
   int n_buffer;                // size of buffer
   int *int_buffer;             // buffer for passing data to netcdf
+  float *float_buffer;         // buffer for passing data to netcdf
   double *double_buffer;       // buffer for passing data to netcdf
 
   int ncid;
