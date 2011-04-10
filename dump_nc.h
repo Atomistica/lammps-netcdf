@@ -24,7 +24,7 @@ DumpStyle(nc,DumpNC)
 
 namespace LAMMPS_NS {
 
-const int NC_FIELD_NAME_MAX = 20;
+const int NC_FIELD_NAME_MAX = 100;
 
 // per-atoms quantities (positions, velocities, etc.)
 struct nc_perat_t {
@@ -34,7 +34,7 @@ struct nc_perat_t {
   int var;                      // NetCDF variable
 
   bool constant;                // is this property per file (not per frame)
-  bool dumped;                  // has this property been written
+  int ndumped;                  // number of enties written for this prop.
 };
 
 // per-frame quantities (variables, fixes or computes)

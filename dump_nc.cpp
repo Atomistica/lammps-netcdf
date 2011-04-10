@@ -176,7 +176,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     }
 
     perat[inc].constant = constant;
-    perat[inc].dumped = false;
+    perat[inc].ndumped = 0;
     perat[inc].field[idim] = i;
   }
 
@@ -540,11 +540,11 @@ void DumpNC::write_data(int n, double *mybuf)
 	  start[2] = idim;
 
 	  if (perat[i].constant) {
-	    if (!perat[i].dumped) {
+	    if (perat[i].ndumped < ntotal) {
 	      NCERR( nc_put_vars_int(ncid, perat[i].var,
 				     start+1, count+1, stride+1,
 				     int_buffer) );
-	      perat[i].dumped = true;
+	      perat[i].ndumped += n;
 	    }
 	  }
 	  else
@@ -558,10 +558,10 @@ void DumpNC::write_data(int n, double *mybuf)
 	}
 
 	if (perat[i].constant) {
-	  if (!perat[i].dumped) {
+	  if (perat[i].ndumped < ntotal) {
 	    NCERR( nc_put_vara_int(ncid, perat[i].var, start+1, count+1,
 				   int_buffer) );
-	    perat[i].dumped = true;
+	    perat[i].ndumped += n;
 	  }
 	}
 	else
@@ -583,11 +583,11 @@ void DumpNC::write_data(int n, double *mybuf)
 	  start[2] = idim;
 
 	  if (perat[i].constant) {
-	    if (!perat[i].dumped) {
+	    if (perat[i].ndumped < ntotal) {
 	      NCERR( nc_put_vars_double(ncid, perat[i].var,
 					start+1, count+1, stride+1,
 					double_buffer) );
-	      perat[i].dumped = true;
+	      perat[i].ndumped += n;
 	    }
 	  }
 	  else
@@ -601,10 +601,10 @@ void DumpNC::write_data(int n, double *mybuf)
 	}
 
 	if (perat[i].constant) {
-	  if (!perat[i].dumped) {
+	  if (perat[i].ndumped < ntotal) {
 	    NCERR( nc_put_vara_double(ncid, perat[i].var, start+1, count+1,
 				      double_buffer) );
-	    perat[i].dumped = true;
+	    perat[i].ndumped += n;
 	  }
 	}
 	else
