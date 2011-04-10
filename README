@@ -1,0 +1,45 @@
+The files in this directory are a user-contributed package for LAMMPS.
+
+The person who created these files is Lars Pastewka at
+Johns Hopkins University (pas@pha.jhu.edu).
+Contact him directly if you have questions.
+
+--------------------------------------
+
+Lars Pastewka
+Johns Hopkins University
+Department of Physics and Astronomy
+3400 N. Charles St., Baltimore, MD 21218
+e-mail: pas@pha.jhu.edu
+
+PACKAGE DESCRIPTION:
+
+Dump style for output into a NetCDF database. The database format follows the
+AMBER NetCDF trajectory convention (http://ambermd.org/netcdf/nctraj.html),
+but includes extension to this convention.
+
+Syntax:
+
+dump ID group-ID nc N file args
+dump_modify ID keyword values
+
+with
+
+args = list of atom attributes
+keyword = double_precision or global
+* double_precision: output data as double instead of float
+* global = list of global (not per atom, but per frame) quantities
+    can be variables, compute or fix data prefixed with v_, c_ and f_,
+    respectively.
+
+The list of atom attributes is identical to the 'custom' dump style.
+
+These .nc files can be directly visualized using the libAtoms flavor of
+AtomEye (http://www.libatoms.org/). For VMD
+(http://www.ks.uiuc.edu/Research/vmd/) additional topology information
+needs to be provided (e.g. a prmtop file).
+
+INSTALLATION:
+
+via a normal LAMMPS package installation: make yes-user-eff
+
