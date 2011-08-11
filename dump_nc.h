@@ -91,11 +91,11 @@ class DumpNC : public DumpCustom {
   int cell_angles_var;
 
   void openfile();
-  void write_header(int);
+  void write_header(bigint);
   void write_data(int, double *);
   void write_prmtop();
 
-  int modify_param2(int, char **);
+  virtual int modify_param(int, char **);
 
   void ncerr(int, int);
 };

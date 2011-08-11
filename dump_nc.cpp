@@ -197,7 +197,7 @@ DumpNC::~DumpNC()
   if (me == 0 && singlefile_opened)
     NCERR( nc_close(ncid) );
 
-  if (rbuf) memory->destroy_2d_double_array(rbuf);
+  if (rbuf) memory->destroy(rbuf);
 
   delete [] perat;
   if (n_perframe > 0)
@@ -416,7 +416,7 @@ void DumpNC::openfile()
 
 /* ---------------------------------------------------------------------- */
 
-void DumpNC::write_header(int n)
+void DumpNC::write_header(bigint n)
 {
   size_t start[2];
 
@@ -624,7 +624,7 @@ void DumpNC::write_data(int n, double *mybuf)
 
 /* ---------------------------------------------------------------------- */
 
-int DumpNC::modify_param2(int narg, char **arg)
+int DumpNC::modify_param(int narg, char **arg)
 {
   int iarg = 0;
   if (strcmp(arg[iarg],"double_precision") == 0) {
@@ -651,7 +651,7 @@ int DumpNC::modify_param2(int narg, char **arg)
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param2: perframe quantity '%s' must "
+	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
 	error->all(errstr);
       }
@@ -723,7 +723,7 @@ int DumpNC::modify_param2(int narg, char **arg)
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param2: perframe quantity '%s' must "
+	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
 	error->all(errstr);
       }

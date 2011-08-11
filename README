@@ -51,3 +51,11 @@ modification of your favorite makefile. Please add
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
+--------------------------------------
+
+Other notes:
+
+
+Up to rev 14 works with 5Jan11
+Up to rev XX works with 14Aug11
+
