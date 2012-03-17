@@ -72,9 +72,9 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   sortcol = 0;
 
   if (multiproc)
-    error->all("DumpNC: Multi-processor writes are not (yet) supported.");
+    error->all(FLERR,"DumpNC: Multi-processor writes are not (yet) supported.");
   if (multifile)
-    error->all("DumpNC: Multiple files are not supported.");
+    error->all(FLERR,"DumpNC: Multiple files are not supported.");
 
   perat = new nc_perat_t[nfield];
 
@@ -139,7 +139,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       char *ptr = strchr(mangled, '[');
       if (ptr) {
 	if (mangled[strlen(mangled)-1] != ']')
-	  error->all("DumpNC: Missing ']' in dump command");
+	  error->all(FLERR,"DumpNC: Missing ']' in dump command");
 	*ptr = '\0';
 	idim = ptr[1] - '1';
 	ndims = THIS_IS_A_COMPUTE;
@@ -149,7 +149,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       char *ptr = strchr(mangled, '[');
       if (ptr) {
 	if (mangled[strlen(mangled)-1] != ']')
-	  error->all("DumpNC: Missing ']' in dump command");
+	  error->all(FLERR,"DumpNC: Missing ']' in dump command");
 	*ptr = '\0';
 	idim = ptr[1] - '1';
 	ndims = THIS_IS_A_FIX;
@@ -217,19 +217,19 @@ void DumpNC::openfile()
     if (perat[i].dims == THIS_IS_A_COMPUTE) {
       int j = field2index[perat[i].field[0]];
       if (!fix[j]->peratom_flag)
-	error->all("DumpNC::init_style: compute does not provide per atom "
+	error->all(FLERR,"DumpNC::init_style: compute does not provide per atom "
 		   "data");
       perat[i].dims = compute[j]->size_peratom_cols;
       if (perat[i].dims > MAX_DIMS)
-	error->all("DumpNC::init_style: perat[i].dims > MAX_DIMS");
+	error->all(FLERR,"DumpNC::init_style: perat[i].dims > MAX_DIMS");
     }
     else if (perat[i].dims == THIS_IS_A_FIX) {
       int j = field2index[perat[i].field[0]];
       if (!fix[j]->peratom_flag)
-	error->all("DumpNC::init_style: fix does not provide per atom data");
+	error->all(FLERR,"DumpNC::init_style: fix does not provide per atom data");
       perat[i].dims = fix[j]->size_peratom_cols;
       if (perat[i].dims > MAX_DIMS)
-	error->all("DumpNC::init_style: perat[i].dims > MAX_DIMS");
+	error->all(FLERR,"DumpNC::init_style: perat[i].dims > MAX_DIMS");
     }
   }
 
@@ -373,7 +373,7 @@ void DumpNC::openfile()
       char errstr[1024];
       sprintf(errstr, "DumpNC: Unsupported unit style '%s'",
 	      update->unit_style);
-      error->all(errstr);
+      error->all(FLERR,errstr);
     }
 
     NCERR( nc_put_att_text(ncid, cell_angles_var, NC_UNITS_STR,
@@ -438,7 +438,7 @@ void DumpNC::write_header(bigint n)
       cell_angles[2] = 90;
     }
     else {
-      error->all("DumpNC::write_header: Implement support for triclinic\n");
+      error->all(FLERR,"DumpNC::write_header: Implement support for triclinic\n");
     }
 
     count[0] = 1;
@@ -653,7 +653,7 @@ int DumpNC::modify_param(int narg, char **arg)
 	char errstr[1024];
 	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
-	error->all(errstr);
+	error->all(FLERR,errstr);
       }
 
       if (!strncmp(arg[iarg], "c_", 2)) {
@@ -662,20 +662,20 @@ int DumpNC::modify_param(int narg, char **arg)
 
 	if (ptr) {
 	  if (suffix[strlen(suffix)-1] != ']')
-	    error->all("DumpNC: Missing ']' in dump modify command");
+	    error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
 	  *ptr = '\0';
 	  idim = ptr[1] - '1';
 	}
 
 	n = modify->find_compute(suffix);
 	if (n < 0)
-	  error->all("Could not find dump modify compute ID");
+	  error->all(FLERR,"Could not find dump modify compute ID");
 	if (modify->compute[n]->peratom_flag != 0)
-	  error->all("Dump modify compute ID computes per-atom info");
+	  error->all(FLERR,"Dump modify compute ID computes per-atom info");
 	if (idim >= 0 && modify->compute[n]->vector_flag == 0)
-	  error->all("Dump modify compute ID does not compute vector");
+	  error->all(FLERR,"Dump modify compute ID does not compute vector");
 	if (idim < 0 && modify->compute[n]->scalar_flag == 0)
-	  error->all("Dump modify compute ID does not compute scalar");
+	  error->all(FLERR,"Dump modify compute ID does not compute scalar");
 
 	perframe[i].type = THIS_IS_A_COMPUTE;
 	perframe[i].dim = idim;
@@ -688,20 +688,20 @@ int DumpNC::modify_param(int narg, char **arg)
 
 	if (ptr) {
 	  if (suffix[strlen(suffix)-1] != ']')
-	    error->all("DumpNC: Missing ']' in dump modify command");
+	    error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
 	  *ptr = '\0';
 	  idim = ptr[1] - '1';
 	}
 
 	n = modify->find_fix(suffix);
 	if (n < 0)
-	  error->all("Could not find dump modify fix ID");
+	  error->all(FLERR,"Could not find dump modify fix ID");
 	if (modify->fix[n]->peratom_flag != 0)
-	  error->all("Dump modify fix ID computes per-atom info");
+	  error->all(FLERR,"Dump modify fix ID computes per-atom info");
 	if (idim >= 0 && modify->fix[n]->vector_flag == 0)
-	  error->all("Dump modify fix ID does not compute vector");
+	  error->all(FLERR,"Dump modify fix ID does not compute vector");
 	if (idim < 0 && modify->fix[n]->scalar_flag == 0)
-	  error->all("Dump modify fix ID does not compute vector");
+	  error->all(FLERR,"Dump modify fix ID does not compute vector");
 
 	perframe[i].type = THIS_IS_A_FIX;
 	perframe[i].dim = idim;
@@ -711,9 +711,9 @@ int DumpNC::modify_param(int narg, char **arg)
       else if (!strncmp(arg[iarg], "v_", 2)) {
 	n = input->variable->find(suffix);
 	if (n < 0)
-	  error->all("Could not find dump modify variable ID");
+	  error->all(FLERR,"Could not find dump modify variable ID");
 	if (!input->variable->equalstyle(n))
-	  error->all("Dump modify variable must be of style equal");
+	  error->all(FLERR,"Dump modify variable must be of style equal");
 
 	perframe[i].type = THIS_IS_A_VARIABLE;
 	perframe[i].dim = 1;
@@ -725,7 +725,7 @@ int DumpNC::modify_param(int narg, char **arg)
 	char errstr[1024];
 	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
 		"be compute, fix or variable", arg[iarg]);
-	error->all(errstr);
+	error->all(FLERR,errstr);
       }
 
       delete [] suffix;
@@ -801,6 +801,6 @@ void DumpNC::ncerr(int err, int line)
     char errstr[1024];
     sprintf(errstr, "NetCDF failed with error '%s' in line %i of %s.",
 	    nc_strerror(err), line, __FILE__);
-    error->one(errstr);
+    error->one(FLERR,errstr);
   }
 }
