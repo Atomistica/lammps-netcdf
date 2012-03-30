@@ -87,6 +87,7 @@ class DumpNC : public DumpCustom {
   int cell_angular_var;
 
   int time_var;
+  int cell_origin_var;
   int cell_lengths_var;
   int cell_angles_var;
 

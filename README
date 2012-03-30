@@ -53,9 +53,17 @@ to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 --------------------------------------
 
+Change log:
+This is rev $Rev$
+
+Rev 17: Renamed 'Z' field to 'atomic_types'.
+        Added 'cell_origin' field.
+
 Other notes:
 
+This is rev $Rev$.
+Rev 14 works with 5Jan11
+Rev 15 works with 14Aug11
+Rev 16 works with 5Mar12
 
-Up to rev 14 works with 5Jan11
-Up to rev XX works with 14Aug11
 
