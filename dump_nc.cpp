@@ -32,6 +32,7 @@
 #include "error.h"
 #include "universe.h"
 #include "update.h"
+#include "group.h"
 
 using namespace LAMMPS_NS;
 
@@ -235,7 +236,7 @@ void DumpNC::openfile()
   }
 
   // get total number of atoms
-  MPI_Allreduce(&atom->nlocal, &ntotal, 1, MPI_INT, MPI_SUM, world);
+  ntotal = group->count(igroup);
 
   if (me == 0) {
     int dims[NC_MAX_VAR_DIMS];
@@ -460,7 +461,8 @@ void DumpNC::write_header(bigint n)
       cell_angles[2] = 90;
     }
     else {
-      error->all(FLERR,"DumpNC::write_header: Implement support for triclinic\n");
+      error->all(FLERR,"DumpNC::write_header: Implement support for "
+		 "triclinic\n");
     }
 
     count[0] = 1;
