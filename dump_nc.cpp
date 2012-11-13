@@ -673,8 +673,17 @@ void DumpNC::write_data(int n, double *mybuf)
 int DumpNC::modify_param(int narg, char **arg)
 {
   int iarg = 0;
-  if (strcmp(arg[iarg],"double_precision") == 0) {
-    double_precision = true;
+  if (strcmp(arg[iarg],"double") == 0) {
+    iarg++;
+    if (iarg >= narg)
+      error->all(FLERR,"expected 'yes' or 'no' after 'double' keyword.");
+    if (strcmp(arg[iarg],"yes") == 0) {
+      double_precision = true;
+    }
+    else if (strcmp(arg[iarg],"no") == 0) {
+      double_precision = false;
+    }
+    else error->all(FLERR,"expected 'yes' or 'no' after 'double' keyword.");
     iarg++;
   }
   if (strcmp(arg[iarg],"global") == 0) {
@@ -697,8 +706,8 @@ int DumpNC::modify_param(int narg, char **arg)
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
-		"be compute, fix or variable", arg[iarg]);
+	sprintf(errstr, "perframe quantity '%s' must be compute, fix or "
+		"variable", arg[iarg]);
 	error->all(FLERR,errstr);
       }
 
@@ -708,7 +717,7 @@ int DumpNC::modify_param(int narg, char **arg)
 
 	if (ptr) {
 	  if (suffix[strlen(suffix)-1] != ']')
-	    error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
+	    error->all(FLERR,"Missing ']' in dump modify command");
 	  *ptr = '\0';
 	  idim = ptr[1] - '1';
 	}

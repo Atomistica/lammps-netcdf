@@ -20,19 +20,24 @@ but includes extension to this convention.
 
 Syntax:
 
-dump ID group-ID nc N file args
-dump_modify ID keyword values
+  dump ID group-ID nc N file args
+  dump_modify ID keyword values
 
 with
 
 args = list of atom attributes
 keyword = double_precision or global
-* double_precision: output data as double instead of float
+* double yes|no: output data as double instead of float
 * global = list of global (not per atom, but per frame) quantities
     can be variables, compute or fix data prefixed with v_, c_ and f_,
     respectively.
 
 The list of atom attributes is identical to the 'custom' dump style.
+
+An example would be:
+
+  dump 1 all nc 100 traj.nc type x y z vx vy vz
+  dump_modify 1 global c_thermo_pe c_thermo_temp c_thermo_press
 
 These .nc files can be directly visualized using the libAtoms flavor of
 AtomEye (http://www.libatoms.org/). For VMD
@@ -53,15 +58,12 @@ to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 --------------------------------------
 
-Change log:
 This is rev $Rev$
-
-Rev 17: Renamed 'Z' field to 'atomic_types'.
-        Added 'cell_origin' field.
 
 Other notes:
 
 This is rev $Rev$.
+Rev 20 works with 11Nov12
 Rev 14 works with 5Jan11
 Rev 15 works with 14Aug11
 Rev 16 works with 5Mar12
