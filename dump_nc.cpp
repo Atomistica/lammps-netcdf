@@ -17,24 +17,27 @@
 
 #include <netcdf.h>
 
+#include "atom.h"
+#include "comm.h"
+#include "compute.h"
+#include "domain.h"
+#include "error.h"
+#include "fix.h"
+#include "group.h"
+#include "input.h"
+#include "math_const.h"
+#include "memory.h"
+#include "modify.h"
 #include "stdlib.h"
 #include "string.h"
-#include "dump_nc.h"
-#include "atom.h"
-#include "domain.h"
-#include "comm.h"
-#include "modify.h"
-#include "compute.h"
-#include "input.h"
-#include "fix.h"
-#include "variable.h"
-#include "memory.h"
-#include "error.h"
-#include "universe.h"
 #include "update.h"
-#include "group.h"
+#include "universe.h"
+#include "variable.h"
+
+#include "dump_nc.h"
 
 using namespace LAMMPS_NS;
+using namespace MathConst;
 
 enum{INT,DOUBLE};  // same as in dump_custom.cpp
 
@@ -461,8 +464,25 @@ void DumpNC::write_header(bigint n)
       cell_angles[2] = 90;
     }
     else {
-      error->all(FLERR,"DumpNC::write_header: Implement support for "
-		 "triclinic\n");
+      double cosalpha, cosbeta, cosgamma;
+      double *h = domain->h;
+
+      cell_origin[0] = domain->boxlo[0];
+      cell_origin[1] = domain->boxlo[1];
+      cell_origin[2] = domain->boxlo[2];
+
+      cell_lengths[0] = domain->xprd;
+      cell_lengths[1] = sqrt(h[1]*h[1]+h[5]*h[5]);
+      cell_lengths[2] = sqrt(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]);
+
+      cosalpha = (h[5]*h[4]+h[1]*h[3])/
+	sqrt((h[1]*h[1]+h[5]*h[5])*(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]));
+      cosbeta = h[4]/sqrt(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]);
+      cosgamma = h[5]/sqrt(h[1]*h[1]+h[5]*h[5]);
+
+      cell_angles[0] = acos(cosalpha)*180.0/MY_PI;
+      cell_angles[1] = acos(cosbeta)*180.0/MY_PI;
+      cell_angles[2] = acos(cosgamma)*180.0/MY_PI;
     }
 
     count[0] = 1;
