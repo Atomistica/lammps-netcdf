@@ -60,6 +60,7 @@ const int MAX_DIMS           = 10;
 const int THIS_IS_A_FIX      = -1;
 const int THIS_IS_A_COMPUTE  = -2;
 const int THIS_IS_A_VARIABLE = -3;
+const int THIS_IS_A_BIGINT   = -4;
 
 /* ---------------------------------------------------------------------- */
 
@@ -324,8 +325,14 @@ void DumpNC::openfile()
 
     // perframe variables
     for (int i = 0; i < n_perframe; i++) {
-      NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
-			&perframe[i].var) );
+      if (perframe[i].type == THIS_IS_A_BIGINT) {
+	NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
+			  &perframe[i].var) );
+      }
+      else {
+	NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
+			  &perframe[i].var) );
+      }
     }
 
     // attributes
@@ -497,32 +504,42 @@ void DumpNC::write_header(bigint n)
   }
 
   for (int i = 0; i < n_perframe; i++) {
-    double data;
-    int j = perframe[i].index;
-    int idim = perframe[i].dim;
 
-    if (perframe[i].type == THIS_IS_A_COMPUTE) {
-      if (idim >= 0) {
-	modify->compute[j]->compute_vector();
-	data = modify->compute[j]->vector[idim];
-      }
-      else
-	data = modify->compute[j]->compute_scalar();
+    if (perframe[i].type == THIS_IS_A_BIGINT) {
+      bigint data;
+      (this->*perframe[i].compute)((void*) &data);
+      
+      if (me == 0)
+	NCERR( nc_put_var1_long(ncid, perframe[i].var, start, &data) );
     }
-    else if (perframe[i].type == THIS_IS_A_FIX) {
-      if (idim >= 0) {
-	data = modify->fix[j]->compute_vector(idim);
-      }
-      else
-	data = modify->fix[j]->compute_scalar();
-    }
-    else if (perframe[i].type == THIS_IS_A_VARIABLE) {
-      j = input->variable->find(perframe[i].id);
-      data = input->variable->compute_equal(j);
-    }
+    else {
+      double data;
+      int j = perframe[i].index;
+      int idim = perframe[i].dim;
 
-    if (me == 0)
-      NCERR( nc_put_var1_double(ncid, perframe[i].var, start, &data) );
+      if (perframe[i].type == THIS_IS_A_COMPUTE) {
+	if (idim >= 0) {
+	  modify->compute[j]->compute_vector();
+	  data = modify->compute[j]->vector[idim];
+	}
+	else
+	  data = modify->compute[j]->compute_scalar();
+      }
+      else if (perframe[i].type == THIS_IS_A_FIX) {
+	if (idim >= 0) {
+	  data = modify->fix[j]->compute_vector(idim);
+	}
+	else
+	  data = modify->fix[j]->compute_scalar();
+      }
+      else if (perframe[i].type == THIS_IS_A_VARIABLE) {
+	j = input->variable->find(perframe[i].id);
+	data = input->variable->compute_equal(j);
+      }
+
+      if (me == 0)
+	NCERR( nc_put_var1_double(ncid, perframe[i].var, start, &data) );
+    }
   }
 
   ndata = n;
@@ -698,92 +715,111 @@ int DumpNC::modify_param(int narg, char **arg)
       int n;
       char *suffix;
 
-      n = strlen(arg[iarg]);
-
-      if (n > 2) {
-	suffix = new char[n-1];
-	strcpy(suffix, arg[iarg]+2);
+      if (!strcmp(arg[iarg],"step")) {
+	perframe[i].type = THIS_IS_A_BIGINT;
+	perframe[i].compute = &DumpNC::compute_step;
+	strcpy(perframe[i].name, arg[iarg]);
+      }
+      else if (!strcmp(arg[iarg],"elapsed")) {
+	perframe[i].type = THIS_IS_A_BIGINT;
+	perframe[i].compute = &DumpNC::compute_elapsed;
+	strcpy(perframe[i].name, arg[iarg]);
+      }
+      else if (!strcmp(arg[iarg],"elaplong")) {
+	perframe[i].type = THIS_IS_A_BIGINT;
+	perframe[i].compute = &DumpNC::compute_elapsed_long;
+	strcpy(perframe[i].name, arg[iarg]);
       }
       else {
-	char errstr[1024];
-	sprintf(errstr, "perframe quantity '%s' must be compute, fix or "
-		"variable", arg[iarg]);
-	error->all(FLERR,errstr);
-      }
+	
+	n = strlen(arg[iarg]);
 
-      if (!strncmp(arg[iarg], "c_", 2)) {
-	int idim = -1;
-	char *ptr = strchr(suffix, '[');
-
-	if (ptr) {
-	  if (suffix[strlen(suffix)-1] != ']')
-	    error->all(FLERR,"Missing ']' in dump modify command");
-	  *ptr = '\0';
-	  idim = ptr[1] - '1';
+	if (n > 2) {
+	  suffix = new char[n-1];
+	  strcpy(suffix, arg[iarg]+2);
+	}
+	else {
+	  char errstr[1024];
+	  sprintf(errstr, "perframe quantity '%s' must thermo quantity or "
+		  "compute, fix or variable", arg[iarg]);
+	  error->all(FLERR,errstr);
 	}
 
-	n = modify->find_compute(suffix);
-	if (n < 0)
-	  error->all(FLERR,"Could not find dump modify compute ID");
-	if (modify->compute[n]->peratom_flag != 0)
-	  error->all(FLERR,"Dump modify compute ID computes per-atom info");
-	if (idim >= 0 && modify->compute[n]->vector_flag == 0)
-	  error->all(FLERR,"Dump modify compute ID does not compute vector");
-	if (idim < 0 && modify->compute[n]->scalar_flag == 0)
-	  error->all(FLERR,"Dump modify compute ID does not compute scalar");
+	if (!strncmp(arg[iarg], "c_", 2)) {
+	  int idim = -1;
+	  char *ptr = strchr(suffix, '[');
 
-	perframe[i].type = THIS_IS_A_COMPUTE;
-	perframe[i].dim = idim;
-	perframe[i].index = n;
-	strcpy(perframe[i].name, arg[iarg]);
-      }
-      else if (!strncmp(arg[iarg], "f_", 2)) {
-	int idim = -1;
-	char *ptr = strchr(suffix, '[');
+	  if (ptr) {
+	    if (suffix[strlen(suffix)-1] != ']')
+	      error->all(FLERR,"Missing ']' in dump modify command");
+	    *ptr = '\0';
+	    idim = ptr[1] - '1';
+	  }
 
-	if (ptr) {
-	  if (suffix[strlen(suffix)-1] != ']')
-	    error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
-	  *ptr = '\0';
-	  idim = ptr[1] - '1';
+	  n = modify->find_compute(suffix);
+	  if (n < 0)
+	    error->all(FLERR,"Could not find dump modify compute ID");
+	  if (modify->compute[n]->peratom_flag != 0)
+	    error->all(FLERR,"Dump modify compute ID computes per-atom info");
+	  if (idim >= 0 && modify->compute[n]->vector_flag == 0)
+	    error->all(FLERR,"Dump modify compute ID does not compute vector");
+	  if (idim < 0 && modify->compute[n]->scalar_flag == 0)
+	    error->all(FLERR,"Dump modify compute ID does not compute scalar");
+
+	  perframe[i].type = THIS_IS_A_COMPUTE;
+	  perframe[i].dim = idim;
+	  perframe[i].index = n;
+	  strcpy(perframe[i].name, arg[iarg]);
+	}
+	else if (!strncmp(arg[iarg], "f_", 2)) {
+	  int idim = -1;
+	  char *ptr = strchr(suffix, '[');
+
+	  if (ptr) {
+	    if (suffix[strlen(suffix)-1] != ']')
+	      error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
+	    *ptr = '\0';
+	    idim = ptr[1] - '1';
+	  }
+	  
+	  n = modify->find_fix(suffix);
+	  if (n < 0)
+	    error->all(FLERR,"Could not find dump modify fix ID");
+	  if (modify->fix[n]->peratom_flag != 0)
+	    error->all(FLERR,"Dump modify fix ID computes per-atom info");
+	  if (idim >= 0 && modify->fix[n]->vector_flag == 0)
+	    error->all(FLERR,"Dump modify fix ID does not compute vector");
+	  if (idim < 0 && modify->fix[n]->scalar_flag == 0)
+	    error->all(FLERR,"Dump modify fix ID does not compute vector");
+
+	  perframe[i].type = THIS_IS_A_FIX;
+	  perframe[i].dim = idim;
+	  perframe[i].index = n;
+	  strcpy(perframe[i].name, arg[iarg]);
+	}
+	else if (!strncmp(arg[iarg], "v_", 2)) {
+	  n = input->variable->find(suffix);
+	  if (n < 0)
+	    error->all(FLERR,"Could not find dump modify variable ID");
+	  if (!input->variable->equalstyle(n))
+	    error->all(FLERR,"Dump modify variable must be of style equal");
+
+	  perframe[i].type = THIS_IS_A_VARIABLE;
+	  perframe[i].dim = 1;
+	  perframe[i].index = n;
+	  strcpy(perframe[i].name, arg[iarg]);
+	  strcpy(perframe[i].id, suffix);
+	}
+	else {
+	  char errstr[1024];
+	  sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
+		  "be compute, fix or variable", arg[iarg]);
+	  error->all(FLERR,errstr);
 	}
 
-	n = modify->find_fix(suffix);
-	if (n < 0)
-	  error->all(FLERR,"Could not find dump modify fix ID");
-	if (modify->fix[n]->peratom_flag != 0)
-	  error->all(FLERR,"Dump modify fix ID computes per-atom info");
-	if (idim >= 0 && modify->fix[n]->vector_flag == 0)
-	  error->all(FLERR,"Dump modify fix ID does not compute vector");
-	if (idim < 0 && modify->fix[n]->scalar_flag == 0)
-	  error->all(FLERR,"Dump modify fix ID does not compute vector");
+	delete [] suffix;
 
-	perframe[i].type = THIS_IS_A_FIX;
-	perframe[i].dim = idim;
-	perframe[i].index = n;
-	strcpy(perframe[i].name, arg[iarg]);
       }
-      else if (!strncmp(arg[iarg], "v_", 2)) {
-	n = input->variable->find(suffix);
-	if (n < 0)
-	  error->all(FLERR,"Could not find dump modify variable ID");
-	if (!input->variable->equalstyle(n))
-	  error->all(FLERR,"Dump modify variable must be of style equal");
-
-	perframe[i].type = THIS_IS_A_VARIABLE;
-	perframe[i].dim = 1;
-	perframe[i].index = n;
-	strcpy(perframe[i].name, arg[iarg]);
-	strcpy(perframe[i].id, suffix);
-      }
-      else {
-	char errstr[1024];
-	sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
-		"be compute, fix or variable", arg[iarg]);
-	error->all(FLERR,errstr);
-      }
-
-      delete [] suffix;
     }
 
     return narg;
@@ -858,4 +894,31 @@ void DumpNC::ncerr(int err, int line)
 	    nc_strerror(err), line, __FILE__);
     error->one(FLERR,errstr);
   }
+}
+
+/* ----------------------------------------------------------------------
+   one method for every keyword thermo can output
+   called by compute() or evaluate_keyword()
+   compute will have already been called
+   set ivalue/dvalue/bivalue if value is int/double/bigint
+   customize a new keyword by adding a method
+------------------------------------------------------------------------- */
+
+void DumpNC::compute_step(void *r)
+{
+  *((bigint *) r) = update->ntimestep;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpNC::compute_elapsed(void *r)
+{
+  *((bigint *) r) = update->ntimestep - update->firststep;
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpNC::compute_elapsed_long(void *r)
+{
+  *((bigint *) r) = update->ntimestep - update->beginstep;
 }

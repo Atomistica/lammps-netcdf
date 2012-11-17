@@ -26,33 +26,36 @@ namespace LAMMPS_NS {
 
 const int NC_FIELD_NAME_MAX = 100;
 
-// per-atoms quantities (positions, velocities, etc.)
-struct nc_perat_t {
-  int dims;                     // number of dimensions
-  int field[3];                 // field indices corresponding x,y,z-comp.
-  char name[NC_FIELD_NAME_MAX]; // field name
-  int var;                      // NetCDF variable
-
-  bool constant;                // is this property per file (not per frame)
-  int ndumped;                  // number of enties written for this prop.
-};
-
-// per-frame quantities (variables, fixes or computes)
-struct nc_perframe_t {
-  char name[NC_FIELD_NAME_MAX]; // field name
-  int var;                      // NetCDF variable
-  int type;                     // variable, fix or compute
-  int index;                    // index in fix/compute list
-  int dim;                      // dimension
-  char id[NC_FIELD_NAME_MAX];   // variable id
-};
-
 class DumpNC : public DumpCustom {
  public:
   DumpNC(class LAMMPS *, int, char **);
   ~DumpNC();
 
  private:
+  // per-atoms quantities (positions, velocities, etc.)
+  struct nc_perat_t {
+    int dims;                     // number of dimensions
+    int field[3];                 // field indices corresponding x,y,z-comp.
+    char name[NC_FIELD_NAME_MAX]; // field name
+    int var;                      // NetCDF variable
+
+    bool constant;                // is this property per file (not per frame)
+    int ndumped;                  // number of enties written for this prop.
+  };
+
+  typedef void (DumpNC::*funcptr_t)(void *);
+
+  // per-frame quantities (variables, fixes or computes)
+  struct nc_perframe_t {
+    char name[NC_FIELD_NAME_MAX]; // field name
+    int var;                      // NetCDF variable
+    int type;                     // variable, fix, compute or callback
+    int index;                    // index in fix/compute list
+    funcptr_t compute;            // compute function
+    int dim;                      // dimension
+    char id[NC_FIELD_NAME_MAX];   // variable id
+  };
+
   int framei;                  // current frame index
   int blocki;                  // current block index
   int ndata;                   // number of data blocks to expect
@@ -99,6 +102,10 @@ class DumpNC : public DumpCustom {
   virtual int modify_param(int, char **);
 
   void ncerr(int, int);
+
+  void compute_step(void *);
+  void compute_elapsed(void *);
+  void compute_elapsed_long(void *);
 };
 
 }
