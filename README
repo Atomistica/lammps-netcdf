@@ -14,9 +14,10 @@ e-mail: pas@pha.jhu.edu
 
 PACKAGE DESCRIPTION:
 
-Dump style for output into a NetCDF database. The database format follows the
-AMBER NetCDF trajectory convention (http://ambermd.org/netcdf/nctraj.html),
-but includes extension to this convention.
+This is a LAMMPS (http://lammps.sandia.gov/) dump style for output into a NetCDF
+database. The database format follows the AMBER NetCDF trajectory convention
+(http://ambermd.org/netcdf/nctraj.html), but includes extension to this
+convention.
 
 Syntax:
 
@@ -40,13 +41,16 @@ An example would be:
   dump_modify 1 global c_thermo_pe c_thermo_temp c_thermo_press
 
 These .nc files can be directly visualized using the libAtoms flavor of
-AtomEye (http://www.libatoms.org/). For VMD
-(http://www.ks.uiuc.edu/Research/vmd/) additional topology information
-needs to be provided (e.g. a prmtop file).
+AtomEye (http://www.libatoms.org/), VMD (http://www.ks.uiuc.edu/Research/vmd/)
+or Ovito (http://www.ovito.org/). Additional topology information needs to be
+provided for visualization in VMD (e.g. a prmtop file).
 
 INSTALLATION:
 
-via a normal LAMMPS package installation: make yes-user-nc
+In your LAMMPS src directory type:
+
+  git clone https://github.com/pastewka/lammps-netcdf.git USER-DUMP-NC
+  make yes-user-dump-nc
 
 Note that LAMMPS will need to be linked to NetCDF. This will require a
 modification of your favorite makefile. Please add
@@ -58,14 +62,6 @@ to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 --------------------------------------
 
-This is rev $Rev$
-
 Other notes:
 
-This is rev $Rev$.
-Rev 20 works with 11Nov12
-Rev 14 works with 5Jan11
-Rev 15 works with 14Aug11
-Rev 16 works with 5Mar12
-
-
+This is package is known to work with LAMMPS 21Nov12.
