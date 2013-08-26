@@ -240,7 +240,7 @@ void DumpNC::openfile()
   }
 
   // get total number of atoms
-  ntotal = group->count(igroup);
+  ntotalgr = group->count(igroup);
 
   if (me == 0) {
     int dims[NC_MAX_VAR_DIMS];
@@ -255,7 +255,7 @@ void DumpNC::openfile()
     // dimensions
     NCERR( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim) );
     NCERR( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim) );
-    NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotal, &atom_dim) );
+    NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim) );
     NCERR( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim) );
     NCERR( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim) );
     NCERR( nc_def_dim(ncid, NC_LABEL_STR, 10, &label_dim) );
@@ -508,9 +508,13 @@ void DumpNC::write_header(bigint n)
     if (perframe[i].type == THIS_IS_A_BIGINT) {
       bigint data;
       (this->*perframe[i].compute)((void*) &data);
-      
+
       if (me == 0)
+#if defined(LAMMPS_SMALLBIG) || defined(LAMMPS_BIGBIG)
 	NCERR( nc_put_var1_long(ncid, perframe[i].var, start, &data) );
+#else
+        NCERR( nc_put_var1_int(ncid, perframe[i].var, start, &data) );
+#endif
     }
     else {
       double data;
@@ -603,7 +607,7 @@ void DumpNC::write_data(int n, double *mybuf)
 	  start[2] = idim;
 
 	  if (perat[i].constant) {
-	    if (perat[i].ndumped < ntotal) {
+	    if (perat[i].ndumped < ntotalgr) {
 	      NCERR( nc_put_vars_int(ncid, perat[i].var,
 				     start+1, count+1, stride+1,
 				     int_buffer) );
@@ -621,7 +625,7 @@ void DumpNC::write_data(int n, double *mybuf)
 	}
 
 	if (perat[i].constant) {
-	  if (perat[i].ndumped < ntotal) {
+	  if (perat[i].ndumped < ntotalgr) {
 	    NCERR( nc_put_vara_int(ncid, perat[i].var, start+1, count+1,
 				   int_buffer) );
 	    perat[i].ndumped += n;
@@ -646,7 +650,7 @@ void DumpNC::write_data(int n, double *mybuf)
 	  start[2] = idim;
 
 	  if (perat[i].constant) {
-	    if (perat[i].ndumped < ntotal) {
+	    if (perat[i].ndumped < ntotalgr) {
 	      NCERR( nc_put_vars_double(ncid, perat[i].var,
 					start+1, count+1, stride+1,
 					double_buffer) );
@@ -664,7 +668,7 @@ void DumpNC::write_data(int n, double *mybuf)
 	}
 
 	if (perat[i].constant) {
-	  if (perat[i].ndumped < ntotal) {
+	  if (perat[i].ndumped < ntotalgr) {
 	    NCERR( nc_put_vara_double(ncid, perat[i].var, start+1, count+1,
 				      double_buffer) );
 	    perat[i].ndumped += n;
@@ -847,7 +851,11 @@ void DumpNC::write_prmtop()
 
   fprintf(f, "%%FLAG POINTERS\n");
   fprintf(f, "%%FORMAT(10I8)\n");
-  fprintf(f, "%8i", ntotal);
+#if defined(LAMMPS_SMALLBIG) || defined(LAMMPS_BIGBIG)
+  fprintf(f, "%8li", ntotalgr);
+#else
+  fprintf(f, "%8i", ntotalgr);
+#endif
   for (int i = 0; i < 11; i++)
     fprintf(f, "%8i", 0);
   fprintf(f, "\n");
@@ -860,7 +868,7 @@ void DumpNC::write_prmtop()
 
   fprintf(f, "%%FLAG ATOM_NAME\n");
   fprintf(f, "%%FORMAT(20a4)\n");
-  for (int i = 0; i < ntotal; i++) {
+  for (int i = 0; i < ntotalgr; i++) {
     fprintf(f, "%4s", "He");
     if ((i+1) % 20 == 0)
       fprintf(f, "\n");
@@ -868,7 +876,7 @@ void DumpNC::write_prmtop()
 
   fprintf(f, "%%FLAG CHARGE\n");
   fprintf(f, "%%FORMAT(5E16.5)\n");
-  for (int i = 0; i < ntotal; i++) {
+  for (int i = 0; i < ntotalgr; i++) {
     fprintf(f, "%16.5e", 0.0);
     if ((i+1) % 5 == 0)
       fprintf(f, "\n");
@@ -876,7 +884,7 @@ void DumpNC::write_prmtop()
 
   fprintf(f, "%%FLAG MASS\n");
   fprintf(f, "%%FORMAT(5E16.5)\n");
-  for (int i = 0; i < ntotal; i++) {
+  for (int i = 0; i < ntotalgr; i++) {
     fprintf(f, "%16.5e", 1.0);
     if ((i+1) % 5 == 0)
       fprintf(f, "\n");

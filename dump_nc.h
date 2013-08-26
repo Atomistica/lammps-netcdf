@@ -60,7 +60,7 @@ class DumpNC : public DumpCustom {
   int blocki;                  // current block index
   int ndata;                   // number of data blocks to expect
 
-  int ntotal;                  // # of atoms
+  bigint ntotalgr;             // # of atoms
 
   int n_perat;                 // # of netcdf per-atom properties
   nc_perat_t *perat;           // per-atom properties
@@ -72,7 +72,7 @@ class DumpNC : public DumpCustom {
 
   bool double_precision;       // write everything as double precision
 
-  int n_buffer;                // size of buffer
+  bigint n_buffer;             // size of buffer
   int *int_buffer;             // buffer for passing data to netcdf
   double *double_buffer;       // buffer for passing data to netcdf
 
