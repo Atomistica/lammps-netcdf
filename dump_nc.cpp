@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------------
-   Contributing author: Lars Pastewka (Johns Hopkins University)
+   Contributing author: Lars Pastewka (Johns Hopkins University, Fh-IWM)
 ------------------------------------------------------------------------- */
 
 #include <netcdf.h>
@@ -33,6 +33,7 @@
 #include "update.h"
 #include "universe.h"
 #include "variable.h"
+#include "force.h"
 
 #include "dump_nc.h"
 
@@ -194,6 +195,8 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   double_buffer = NULL;
 
   double_precision = false;
+
+  framei = -1;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -243,203 +246,285 @@ void DumpNC::openfile()
   ntotalgr = group->count(igroup);
 
   if (me == 0) {
-    int dims[NC_MAX_VAR_DIMS];
-    size_t index[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
-    double d[1];
+    if (append_flag && access(filename, F_OK) != -1) {
+      // Fixme! Perform checks if dimensions and variables conform with
+      // data structure standard.
 
-    if (singlefile_opened) return;
-    singlefile_opened = 1;
+      size_t index[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
+      double d[1];
 
-    NCERR( nc_create(filename, NC_64BIT_OFFSET, &ncid) );
+      if (singlefile_opened) return;
+      singlefile_opened = 1;
+
+      NCERR( nc_open(filename, NC_WRITE, &ncid) );
     
-    // dimensions
-    NCERR( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim) );
-    NCERR( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim) );
-    NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim) );
-    NCERR( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim) );
-    NCERR( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim) );
-    NCERR( nc_def_dim(ncid, NC_LABEL_STR, 10, &label_dim) );
+      // dimensions
+      NCERR( nc_inq_dimid(ncid, NC_FRAME_STR, &frame_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_SPATIAL_STR, &spatial_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_ATOM_STR, &atom_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_LABEL_STR, &label_dim) );
 
-    // default variables
-    dims[0] = spatial_dim;
-    NCERR( nc_def_var(ncid, NC_SPATIAL_STR, NC_CHAR, 1, dims, &spatial_var) );
-    NCERR( nc_def_var(ncid, NC_CELL_SPATIAL_STR, NC_CHAR, 1, dims,
-		      &cell_spatial_var) );
-    dims[0] = spatial_dim;
-    dims[1] = label_dim;
-    NCERR( nc_def_var(ncid, NC_CELL_ANGULAR_STR, NC_CHAR, 2, dims,
-		      &cell_angular_var) );
+      // default variables
+      NCERR( nc_inq_varid(ncid, NC_SPATIAL_STR, &spatial_var) );
+      NCERR( nc_inq_varid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_var) );
+      NCERR( nc_inq_varid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_var) );
+      
+      NCERR( nc_inq_varid(ncid, NC_TIME_STR, &time_var) );
+      NCERR( nc_inq_varid(ncid, NC_CELL_ORIGIN_STR, &cell_origin_var) );
+      NCERR( nc_inq_varid(ncid, NC_CELL_LENGTHS_STR, &cell_lengths_var) );
+      NCERR( nc_inq_varid(ncid, NC_CELL_ANGLES_STR, &cell_angles_var) );
 
-    dims[0] = frame_dim;
-    NCERR( nc_def_var(ncid, NC_TIME_STR, NC_DOUBLE, 1, dims, &time_var) );
-    dims[0] = frame_dim;
-    dims[1] = cell_spatial_dim;
-    NCERR( nc_def_var(ncid, NC_CELL_ORIGIN_STR, NC_DOUBLE, 2, dims,
-		      &cell_origin_var) );
-    NCERR( nc_def_var(ncid, NC_CELL_LENGTHS_STR, NC_DOUBLE, 2, dims,
-		      &cell_lengths_var) );
-    dims[0] = frame_dim;
-    dims[1] = cell_angular_dim;
-    NCERR( nc_def_var(ncid, NC_CELL_ANGLES_STR, NC_DOUBLE, 2, dims,
-		      &cell_angles_var) );
+      // variables specified in the input file
+      for (int i = 0; i < n_perat; i++) {
+	nc_type xtype;
 
-    // variables specified in the input file
-    dims[0] = frame_dim;
-    dims[1] = atom_dim;
-    dims[2] = spatial_dim;
-
-    for (int i = 0; i < n_perat; i++) {
-      nc_type xtype;
-
-      // Type mangling
-      if (vtype[perat[i].field[0]] == INT) {
-	xtype = NC_INT;
+	// Type mangling
+	if (vtype[perat[i].field[0]] == INT) {
+	  xtype = NC_INT;
+	}
+	else {
+	  if (double_precision)
+	    xtype = NC_DOUBLE;
+	  else
+	    xtype = NC_FLOAT;
+	}
+	
+	if (perat[i].constant) {
+	  // this quantity will only be written once
+	  if (perat[i].dims == 3)
+	    // this is needed to store x-, y- and z-coordinates
+	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+	  else
+	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+	}
+	else {
+	  if (perat[i].dims == 3)
+	    // this is needed to store x-, y- and z-coordinates
+	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+	  else
+	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+	}
       }
-      else {
-	if (double_precision)
-	  xtype = NC_DOUBLE;
-	else
-	  xtype = NC_FLOAT;
-      }
 
-      if (perat[i].constant) {
-	// this quantity will only be written once
-	if (perat[i].dims == 3)
-	  // this is needed to store x-, y- and z-coordinates
-	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
-			    &perat[i].var) );
-	else
-	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
-			    &perat[i].var) );
+      // perframe variables
+      for (int i = 0; i < n_perframe; i++) {
+	if (perframe[i].type == THIS_IS_A_BIGINT) {
+	  NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+	}
+	else {
+	  NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+	}
       }
-      else {
-	if (perat[i].dims == 3)
-	  // this is needed to store x-, y- and z-coordinates
-	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
-			    &perat[i].var) );
-	else
-	  NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
-			    &perat[i].var) );
-      }
-    }
-
-    // perframe variables
-    for (int i = 0; i < n_perframe; i++) {
-      if (perframe[i].type == THIS_IS_A_BIGINT) {
-	NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
-			  &perframe[i].var) );
-      }
-      else {
-	NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
-			  &perframe[i].var) );
-      }
-    }
-
-    // attributes
-    NCERR( nc_put_att_text(ncid, NC_GLOBAL, "Conventions",
-			   5, "AMBER") );
-    NCERR( nc_put_att_text(ncid, NC_GLOBAL, "ConventionVersion",
-			   3, "1.0") );
-
-    NCERR( nc_put_att_text(ncid, NC_GLOBAL, "program",
-			   6, "LAMMPS") );
-    NCERR( nc_put_att_text(ncid, NC_GLOBAL, "programVersion",
-			   strlen(universe->version), universe->version) );
-
-    // units
-    if (!strcmp(update->unit_style, "lj")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     2, "lj") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     2, "lj") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     2, "lj") );
-    }
-    else if (!strcmp(update->unit_style, "real")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     11, "femtosecond") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     8, "Angstrom") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "Angstrom") );
-    }
-    else if (!strcmp(update->unit_style, "metal")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     10, "picosecond") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     8, "Angstrom") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     8, "Angstrom") );
-    }
-    else if (!strcmp(update->unit_style, "si")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     6, "second") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     5, "meter") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     5, "meter") );
-    }
-    else if (!strcmp(update->unit_style, "cgs")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     6, "second") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     10, "centimeter") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     10, "centimeter") );
-    }
-    else if (!strcmp(update->unit_style, "electron")) {
-      NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			     11, "femtosecond") );
-      NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			     4, "Bohr") );
-      NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			     4, "Bohr") );
+    
+      size_t nframes;
+      NCERR( nc_inq_dimlen(ncid, frame_dim, &nframes) );
+      // -1 means append to the end, -2 means override last frame, etc.
+      // Note that in the input file this translates to 'yes', '-1', etc.
+      if (framei < 0)  framei = nframes+framei+1;
+      else  framei -= 1; // first frame is '1' in input file
+      if (framei < 0)  framei = 0;
     }
     else {
-      char errstr[1024];
-      sprintf(errstr, "DumpNC: Unsupported unit style '%s'",
-	      update->unit_style);
-      error->all(FLERR,errstr);
-    }
+      int dims[NC_MAX_VAR_DIMS];
+      size_t index[NC_MAX_VAR_DIMS], count[NC_MAX_VAR_DIMS];
+      double d[1];
 
-    NCERR( nc_put_att_text(ncid, cell_angles_var, NC_UNITS_STR,
-			   6, "degree") );
+      if (singlefile_opened) return;
+      singlefile_opened = 1;
 
-    d[0] = update->dt;
-    NCERR( nc_put_att_double(ncid, time_var, NC_SCALE_FACTOR_STR,
-			     NC_DOUBLE, 1, d) );
-    d[0] = 1.0;
-    NCERR( nc_put_att_double(ncid, cell_origin_var, NC_SCALE_FACTOR_STR,
-			     NC_DOUBLE, 1, d) );
-    d[0] = 1.0;
-    NCERR( nc_put_att_double(ncid, cell_lengths_var, NC_SCALE_FACTOR_STR,
-			     NC_DOUBLE, 1, d) );
-
-    /*
-     * Finished with definition
-     */
-
-    NCERR( nc_enddef(ncid) );
-
-    /*
-     * Write label variables
-     */
-
-    NCERR( nc_put_var_text(ncid, spatial_var, "xyz") );
-    NCERR( nc_put_var_text(ncid, cell_spatial_var, "abc") );
-    index[0] = 0;
-    index[1] = 0;
-    count[0] = 1;
-    count[1] = 5;
-    NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "alpha") );
-    index[0] = 1;
-    count[1] = 4;
-    NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "beta") );
-    index[0] = 2;
-    count[1] = 5;
-    NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "gamma") );
+      NCERR( nc_create(filename, NC_64BIT_OFFSET, &ncid) );
     
-    framei = 0;
+      // dimensions
+      NCERR( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim) );
+      NCERR( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim) );
+      NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim) );
+      NCERR( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim) );
+      NCERR( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim) );
+      NCERR( nc_def_dim(ncid, NC_LABEL_STR, 10, &label_dim) );
+
+      // default variables
+      dims[0] = spatial_dim;
+      NCERR( nc_def_var(ncid, NC_SPATIAL_STR, NC_CHAR, 1, dims, &spatial_var) );
+      NCERR( nc_def_var(ncid, NC_CELL_SPATIAL_STR, NC_CHAR, 1, dims,
+		      &cell_spatial_var) );
+      dims[0] = spatial_dim;
+      dims[1] = label_dim;
+      NCERR( nc_def_var(ncid, NC_CELL_ANGULAR_STR, NC_CHAR, 2, dims,
+			&cell_angular_var) );
+      
+      dims[0] = frame_dim;
+      NCERR( nc_def_var(ncid, NC_TIME_STR, NC_DOUBLE, 1, dims, &time_var) );
+      dims[0] = frame_dim;
+      dims[1] = cell_spatial_dim;
+      NCERR( nc_def_var(ncid, NC_CELL_ORIGIN_STR, NC_DOUBLE, 2, dims,
+			&cell_origin_var) );
+      NCERR( nc_def_var(ncid, NC_CELL_LENGTHS_STR, NC_DOUBLE, 2, dims,
+			&cell_lengths_var) );
+      dims[0] = frame_dim;
+      dims[1] = cell_angular_dim;
+      NCERR( nc_def_var(ncid, NC_CELL_ANGLES_STR, NC_DOUBLE, 2, dims,
+			&cell_angles_var) );
+
+      // variables specified in the input file
+      dims[0] = frame_dim;
+      dims[1] = atom_dim;
+      dims[2] = spatial_dim;
+
+      for (int i = 0; i < n_perat; i++) {
+	nc_type xtype;
+
+	// Type mangling
+	if (vtype[perat[i].field[0]] == INT) {
+	  xtype = NC_INT;
+	}
+	else {
+	  if (double_precision)
+	    xtype = NC_DOUBLE;
+	  else
+	    xtype = NC_FLOAT;
+	}
+	
+	if (perat[i].constant) {
+	  // this quantity will only be written once
+	  if (perat[i].dims == 3)
+	    // this is needed to store x-, y- and z-coordinates
+	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+			      &perat[i].var) );
+	  else
+	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
+			      &perat[i].var) );
+	}
+	else {
+	  if (perat[i].dims == 3)
+	    // this is needed to store x-, y- and z-coordinates
+	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+			      &perat[i].var) );
+	  else
+	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
+			      &perat[i].var) );
+	}
+      }
+
+      // perframe variables
+      for (int i = 0; i < n_perframe; i++) {
+	if (perframe[i].type == THIS_IS_A_BIGINT) {
+	  NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
+			    &perframe[i].var) );
+	}
+	else {
+	  NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
+			    &perframe[i].var) );
+	}
+      }
+
+      // attributes
+      NCERR( nc_put_att_text(ncid, NC_GLOBAL, "Conventions",
+			     5, "AMBER") );
+      NCERR( nc_put_att_text(ncid, NC_GLOBAL, "ConventionVersion",
+			     3, "1.0") );
+      
+      NCERR( nc_put_att_text(ncid, NC_GLOBAL, "program",
+			     6, "LAMMPS") );
+      NCERR( nc_put_att_text(ncid, NC_GLOBAL, "programVersion",
+			     strlen(universe->version), universe->version) );
+
+      // units
+      if (!strcmp(update->unit_style, "lj")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       2, "lj") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       2, "lj") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       2, "lj") );
+      }
+      else if (!strcmp(update->unit_style, "real")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       11, "femtosecond") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       8, "Angstrom") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       8, "Angstrom") );
+      }
+      else if (!strcmp(update->unit_style, "metal")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       10, "picosecond") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       8, "Angstrom") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       8, "Angstrom") );
+      }
+      else if (!strcmp(update->unit_style, "si")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       6, "second") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       5, "meter") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       5, "meter") );
+      }
+      else if (!strcmp(update->unit_style, "cgs")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       6, "second") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       10, "centimeter") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       10, "centimeter") );
+      }
+      else if (!strcmp(update->unit_style, "electron")) {
+	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+			       11, "femtosecond") );
+	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+			       4, "Bohr") );
+	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+			       4, "Bohr") );
+      }
+      else {
+	char errstr[1024];
+	sprintf(errstr, "DumpNC: Unsupported unit style '%s'",
+		update->unit_style);
+	error->all(FLERR,errstr);
+      }
+      
+      NCERR( nc_put_att_text(ncid, cell_angles_var, NC_UNITS_STR,
+			     6, "degree") );
+
+      d[0] = update->dt;
+      NCERR( nc_put_att_double(ncid, time_var, NC_SCALE_FACTOR_STR,
+			       NC_DOUBLE, 1, d) );
+      d[0] = 1.0;
+      NCERR( nc_put_att_double(ncid, cell_origin_var, NC_SCALE_FACTOR_STR,
+			       NC_DOUBLE, 1, d) );
+      d[0] = 1.0;
+      NCERR( nc_put_att_double(ncid, cell_lengths_var, NC_SCALE_FACTOR_STR,
+			       NC_DOUBLE, 1, d) );
+      
+      /*
+       * Finished with definition
+       */
+      
+      NCERR( nc_enddef(ncid) );
+
+      /*
+       * Write label variables
+       */
+      
+      NCERR( nc_put_var_text(ncid, spatial_var, "xyz") );
+      NCERR( nc_put_var_text(ncid, cell_spatial_var, "abc") );
+      index[0] = 0;
+      index[1] = 0;
+      count[0] = 1;
+      count[1] = 5;
+      NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "alpha") );
+      index[0] = 1;
+      count[1] = 4;
+      NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "beta") );
+      index[0] = 2;
+      count[1] = 5;
+      NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "gamma") );
+    
+      framei = 0;
+    }
   }
 }
 
@@ -706,8 +791,16 @@ int DumpNC::modify_param(int narg, char **arg)
     }
     else error->all(FLERR,"expected 'yes' or 'no' after 'double' keyword.");
     iarg++;
+    return 2;
   }
-  if (strcmp(arg[iarg],"global") == 0) {
+  else if (strcmp(arg[iarg],"at") == 0) {
+    iarg++;
+    framei = force->inumeric(FLERR,arg[iarg]);
+    if (framei < 0)  framei--;
+    iarg++;
+    return 2;
+  }
+  else if (strcmp(arg[iarg],"global") == 0) {
     // "perframe" quantities, i.e. not per-atom stuff
 
     iarg++;
