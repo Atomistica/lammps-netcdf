@@ -66,4 +66,4 @@ to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 Other notes:
 
-This is package is known to work with LAMMPS 20Aug13.
+This is package is known to work with LAMMPS 17Dec13.

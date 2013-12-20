@@ -77,6 +77,8 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   rbuf = NULL;
   sort_flag = 1;
   sortcol = 0;
+  binary = 1;
+  flush_flag = 0;
 
   if (multiproc)
     error->all(FLERR,"DumpNC: Multi-processor writes are not (yet) supported.");
