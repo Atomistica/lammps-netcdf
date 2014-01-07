@@ -205,7 +205,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 
 DumpNC::~DumpNC()
 {
-  if (me == 0 && singlefile_opened)
+  if (filewriter && singlefile_opened)
     NCERR( nc_close(ncid) );
 
   if (rbuf) memory->destroy(rbuf);
@@ -247,7 +247,7 @@ void DumpNC::openfile()
   // get total number of atoms
   ntotalgr = group->count(igroup);
 
-  if (me == 0) {
+  if (filewriter) {
     if (append_flag && access(filename, F_OK) != -1) {
       // Fixme! Perform checks if dimensions and variables conform with
       // data structure standard.
@@ -532,6 +532,68 @@ void DumpNC::openfile()
 
 /* ---------------------------------------------------------------------- */
 
+void DumpNC::write()
+{
+  // need to write per-frame (global) properties here since they may come
+  // from computes. write_header below is only called from the writing
+  // processes, but modify->compute[j]->compute_* must be called from all
+  // processes.
+
+  size_t start[2];
+
+  start[0] = framei;
+  start[1] = 0;
+
+  for (int i = 0; i < n_perframe; i++) {
+
+    if (perframe[i].type == THIS_IS_A_BIGINT) {
+      bigint data;
+      (this->*perframe[i].compute)((void*) &data);
+
+      if (filewriter)
+#if defined(LAMMPS_SMALLBIG) || defined(LAMMPS_BIGBIG)
+        NCERR( nc_put_var1_long(ncid, perframe[i].var, start, &data) );
+#else
+        NCERR( nc_put_var1_int(ncid, perframe[i].var, start, &data) );
+#endif
+    }
+    else {
+      double data;
+      int j = perframe[i].index;
+      int idim = perframe[i].dim;
+
+      if (perframe[i].type == THIS_IS_A_COMPUTE) {
+        if (idim >= 0) {
+          modify->compute[j]->compute_vector();
+          data = modify->compute[j]->vector[idim];
+        }
+        else
+          data = modify->compute[j]->compute_scalar();
+      }
+      else if (perframe[i].type == THIS_IS_A_FIX) {
+        if (idim >= 0) {
+          data = modify->fix[j]->compute_vector(idim);
+        }
+        else
+          data = modify->fix[j]->compute_scalar();
+      }
+      else if (perframe[i].type == THIS_IS_A_VARIABLE) {
+        j = input->variable->find(perframe[i].id);
+        data = input->variable->compute_equal(j);
+      }
+
+      if (filewriter)
+        NCERR( nc_put_var1_double(ncid, perframe[i].var, start, &data) );
+    }
+  }
+
+  // call write of superclass
+
+  Dump::write();
+}
+
+/* ---------------------------------------------------------------------- */
+
 void DumpNC::write_header(bigint n)
 {
   size_t start[2];
@@ -539,7 +601,7 @@ void DumpNC::write_header(bigint n)
   start[0] = framei;
   start[1] = 0;
 
-  if (me == 0) {
+  if (filewriter) {
     size_t count[2];
     double time, cell_origin[3], cell_lengths[3], cell_angles[3];
 
@@ -588,49 +650,6 @@ void DumpNC::write_header(bigint n)
 			      cell_lengths) );
     NCERR( nc_put_vara_double(ncid, cell_angles_var, start, count,
 			      cell_angles) );
-  }
-
-  for (int i = 0; i < n_perframe; i++) {
-
-    if (perframe[i].type == THIS_IS_A_BIGINT) {
-      bigint data;
-      (this->*perframe[i].compute)((void*) &data);
-
-      if (me == 0)
-#if defined(LAMMPS_SMALLBIG) || defined(LAMMPS_BIGBIG)
-	NCERR( nc_put_var1_long(ncid, perframe[i].var, start, &data) );
-#else
-        NCERR( nc_put_var1_int(ncid, perframe[i].var, start, &data) );
-#endif
-    }
-    else {
-      double data;
-      int j = perframe[i].index;
-      int idim = perframe[i].dim;
-
-      if (perframe[i].type == THIS_IS_A_COMPUTE) {
-	if (idim >= 0) {
-	  modify->compute[j]->compute_vector();
-	  data = modify->compute[j]->vector[idim];
-	}
-	else
-	  data = modify->compute[j]->compute_scalar();
-      }
-      else if (perframe[i].type == THIS_IS_A_FIX) {
-	if (idim >= 0) {
-	  data = modify->fix[j]->compute_vector(idim);
-	}
-	else
-	  data = modify->fix[j]->compute_scalar();
-      }
-      else if (perframe[i].type == THIS_IS_A_VARIABLE) {
-	j = input->variable->find(perframe[i].id);
-	data = input->variable->compute_equal(j);
-      }
-
-      if (me == 0)
-	NCERR( nc_put_var1_double(ncid, perframe[i].var, start, &data) );
-    }
   }
 
   ndata = n;

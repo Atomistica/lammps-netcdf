@@ -29,7 +29,8 @@ const int NC_FIELD_NAME_MAX = 100;
 class DumpNC : public DumpCustom {
  public:
   DumpNC(class LAMMPS *, int, char **);
-  ~DumpNC();
+  virtual ~DumpNC();
+  virtual void write();
 
  private:
   // per-atoms quantities (positions, velocities, etc.)
@@ -54,6 +55,9 @@ class DumpNC : public DumpCustom {
     funcptr_t compute;            // compute function
     int dim;                      // dimension
     char id[NC_FIELD_NAME_MAX];   // variable id
+
+    bigint bigint_data;           // actual data
+    double double_data;           // actual data
   };
 
   int framei;                  // current frame index
