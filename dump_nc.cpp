@@ -58,7 +58,6 @@ const char NC_CELL_ANGLES_STR[]   = "cell_angles";
 const char NC_UNITS_STR[]         = "units";
 const char NC_SCALE_FACTOR_STR[]  = "scale_factor";
 
-const int MAX_DIMS           = 10;
 const int THIS_IS_A_FIX      = -1;
 const int THIS_IS_A_COMPUTE  = -2;
 const int THIS_IS_A_VARIABLE = -3;
@@ -175,11 +174,12 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     }
 
     if (inc < 0) {
+      // this has not yet been defined
       inc = n_perat;
       perat[inc].dims = ndims;
-      if (ndims < 0) ndims = MAX_DIMS;
-      for (int j = 0; j < ndims; j++) {
-	perat[inc].field[j] = i;
+      if (ndims < 0) ndims = DUMP_NC_MAX_DIMS;
+      for (int j = 0; j < DUMP_NC_MAX_DIMS; j++) {
+	perat[inc].field[j] = -1;
       }
       strcpy(perat[inc].name, mangled);
       n_perat++;
@@ -227,21 +227,35 @@ void DumpNC::openfile()
   // for the size of vector quantities
   for (int i = 0; i < n_perat; i++) {
     if (perat[i].dims == THIS_IS_A_COMPUTE) {
-      int j = field2index[perat[i].field[0]];
+      int j = -1;
+      for (int k = 0; k < DUMP_NC_MAX_DIMS; k++) {
+        if (perat[i].field[k] >= 0) {
+          j = field2index[perat[i].field[0]];
+        }
+      }
+      if (j < 0)
+        error->all(FLERR,"Internal error.");
       if (!compute[j]->peratom_flag)
 	error->all(FLERR,"DumpNC::init_style: compute does not provide per atom "
 		   "data");
       perat[i].dims = compute[j]->size_peratom_cols;
-      if (perat[i].dims > MAX_DIMS)
-	error->all(FLERR,"DumpNC::init_style: perat[i].dims > MAX_DIMS");
+      if (perat[i].dims > DUMP_NC_MAX_DIMS)
+	error->all(FLERR,"DumpNC::init_style: perat[i].dims > DUMP_NC_MAX_DIMS");
     }
     else if (perat[i].dims == THIS_IS_A_FIX) {
-      int j = field2index[perat[i].field[0]];
+      int j = -1;
+      for (int k = 0; k < DUMP_NC_MAX_DIMS; k++) {
+        if (perat[i].field[k] >= 0) {
+          j = field2index[perat[i].field[0]];
+        }
+      }
+      if (j < 0)
+        error->all(FLERR,"Internal error.");
       if (!fix[j]->peratom_flag)
 	error->all(FLERR,"DumpNC::init_style: fix does not provide per atom data");
       perat[i].dims = fix[j]->size_peratom_cols;
-      if (perat[i].dims > MAX_DIMS)
-	error->all(FLERR,"DumpNC::init_style: perat[i].dims > MAX_DIMS");
+      if (perat[i].dims > DUMP_NC_MAX_DIMS)
+	error->all(FLERR,"DumpNC::init_style: perat[i].dims > DUMP_NC_MAX_DIMS");
     }
   }
 
@@ -736,28 +750,30 @@ void DumpNC::write_data(int n, double *mybuf)
 
     if (vtype[iaux] == INT) {
       // integers
-      if (perat[i].dims == 3) {
+      if (perat[i].dims > 1) {
 
-	for (int idim = 0; idim < 3; idim++) {
+	for (int idim = 0; idim < perat[i].dims; idim++) {
 	  iaux = perat[i].field[idim];
 
-	  for (int j = 0; j < n; j++, iaux+=size_one) {
-	    int_buffer[j] = mybuf[iaux];
-	  }
-      
-	  start[2] = idim;
-
-	  if (perat[i].constant) {
-	    if (perat[i].ndumped < ntotalgr) {
-	      NCERR( nc_put_vars_int(ncid, perat[i].var,
-				     start+1, count+1, stride+1,
-				     int_buffer) );
-	      perat[i].ndumped += n;
+	  if (iaux >= 0) {
+	    for (int j = 0; j < n; j++, iaux+=size_one) {
+	      int_buffer[j] = mybuf[iaux];
 	    }
+      
+	    start[2] = idim;
+
+	    if (perat[i].constant) {
+	      if (perat[i].ndumped < ntotalgr) {
+		NCERR( nc_put_vars_int(ncid, perat[i].var,
+				       start+1, count+1, stride+1,
+				       int_buffer) );
+		perat[i].ndumped += n;
+	      }
+	    }
+	    else
+	      NCERR( nc_put_vars_int(ncid, perat[i].var, start, count, stride,
+				     int_buffer) );
 	  }
-	  else
-	    NCERR( nc_put_vars_int(ncid, perat[i].var, start, count, stride,
-				   int_buffer) );
 	}
       }
       else {
@@ -779,28 +795,30 @@ void DumpNC::write_data(int n, double *mybuf)
     }
     else {
       // doubles
-      if (perat[i].dims == 3) {
+      if (perat[i].dims > 1) {
 
-	for (int idim = 0; idim < 3; idim++) {
+	for (int idim = 0; idim < perat[i].dims; idim++) {
 	  iaux = perat[i].field[idim];
 
-	  for (int j = 0; j < n; j++, iaux+=size_one) {
-	    double_buffer[j] = mybuf[iaux];
-	  }
-      
-	  start[2] = idim;
-
-	  if (perat[i].constant) {
-	    if (perat[i].ndumped < ntotalgr) {
-	      NCERR( nc_put_vars_double(ncid, perat[i].var,
-					start+1, count+1, stride+1,
-					double_buffer) );
-	      perat[i].ndumped += n;
+          if (iaux >= 0) {
+	    for (int j = 0; j < n; j++, iaux+=size_one) {
+	      double_buffer[j] = mybuf[iaux];
 	    }
+      
+	    start[2] = idim;
+
+	    if (perat[i].constant) {
+	      if (perat[i].ndumped < ntotalgr) {
+		NCERR( nc_put_vars_double(ncid, perat[i].var,
+					  start+1, count+1, stride+1,
+					  double_buffer) );
+		perat[i].ndumped += n;
+	      }
+	    }
+	    else
+	      NCERR( nc_put_vars_double(ncid, perat[i].var, start, count,
+					stride,	double_buffer) );
 	  }
-	  else
-	    NCERR( nc_put_vars_double(ncid, perat[i].var, start, count, stride,
-				      double_buffer) );
 	}
       }
       else {

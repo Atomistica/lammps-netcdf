@@ -25,6 +25,7 @@ DumpStyle(nc,DumpNC)
 namespace LAMMPS_NS {
 
 const int NC_FIELD_NAME_MAX = 100;
+const int DUMP_NC_MAX_DIMS  = 10;
 
 class DumpNC : public DumpCustom {
  public:
@@ -36,7 +37,7 @@ class DumpNC : public DumpCustom {
   // per-atoms quantities (positions, velocities, etc.)
   struct nc_perat_t {
     int dims;                     // number of dimensions
-    int field[3];                 // field indices corresponding x,y,z-comp.
+    int field[DUMP_NC_MAX_DIMS];  // field indices corresponding to the dim.
     char name[NC_FIELD_NAME_MAX]; // field name
     int var;                      // NetCDF variable
 
