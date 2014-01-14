@@ -81,9 +81,9 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
   flush_flag = 0;
 
   if (multiproc)
-    error->all(FLERR,"DumpNC: Multi-processor writes are not (yet) supported.");
+    error->all(FLERR,"Multi-processor writes are not supported.");
   if (multifile)
-    error->all(FLERR,"DumpNC: Multiple files are not supported.");
+    error->all(FLERR,"Multiple files are not supported.");
 
   perat = new nc_perat_t[nfield];
 
@@ -148,7 +148,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       char *ptr = strchr(mangled, '[');
       if (ptr) {
 	if (mangled[strlen(mangled)-1] != ']')
-	  error->all(FLERR,"DumpNC: Missing ']' in dump command");
+	  error->all(FLERR,"Missing ']' in dump command");
 	*ptr = '\0';
 	idim = ptr[1] - '1';
 	ndims = THIS_IS_A_COMPUTE;
@@ -158,7 +158,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       char *ptr = strchr(mangled, '[');
       if (ptr) {
 	if (mangled[strlen(mangled)-1] != ']')
-	  error->all(FLERR,"DumpNC: Missing ']' in dump command");
+	  error->all(FLERR,"Missing ']' in dump command");
 	*ptr = '\0';
 	idim = ptr[1] - '1';
 	ndims = THIS_IS_A_FIX;
@@ -236,11 +236,10 @@ void DumpNC::openfile()
       if (j < 0)
         error->all(FLERR,"Internal error.");
       if (!compute[j]->peratom_flag)
-	error->all(FLERR,"DumpNC::init_style: compute does not provide per atom "
-		   "data");
+	error->all(FLERR,"compute does not provide per atom data");
       perat[i].dims = compute[j]->size_peratom_cols;
       if (perat[i].dims > DUMP_NC_MAX_DIMS)
-	error->all(FLERR,"DumpNC::init_style: perat[i].dims > DUMP_NC_MAX_DIMS");
+	error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
     }
     else if (perat[i].dims == THIS_IS_A_FIX) {
       int j = -1;
@@ -252,10 +251,10 @@ void DumpNC::openfile()
       if (j < 0)
         error->all(FLERR,"Internal error.");
       if (!fix[j]->peratom_flag)
-	error->all(FLERR,"DumpNC::init_style: fix does not provide per atom data");
+	error->all(FLERR,"fix does not provide per atom data");
       perat[i].dims = fix[j]->size_peratom_cols;
       if (perat[i].dims > DUMP_NC_MAX_DIMS)
-	error->all(FLERR,"DumpNC::init_style: perat[i].dims > DUMP_NC_MAX_DIMS");
+	error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
     }
   }
 
@@ -532,8 +531,7 @@ void DumpNC::openfile()
       }
       else {
 	char errstr[1024];
-	sprintf(errstr, "DumpNC: Unsupported unit style '%s'",
-		update->unit_style);
+	sprintf(errstr, "Unsupported unit style '%s'", update->unit_style);
 	error->all(FLERR,errstr);
       }
       
@@ -948,7 +946,7 @@ int DumpNC::modify_param(int narg, char **arg)
 
 	  if (ptr) {
 	    if (suffix[strlen(suffix)-1] != ']')
-	      error->all(FLERR,"DumpNC: Missing ']' in dump modify command");
+	      error->all(FLERR,"Missing ']' in dump modify command");
 	    *ptr = '\0';
 	    idim = ptr[1] - '1';
 	  }
@@ -983,8 +981,8 @@ int DumpNC::modify_param(int narg, char **arg)
 	}
 	else {
 	  char errstr[1024];
-	  sprintf(errstr, "DumpNC::modify_param: perframe quantity '%s' must "
-		  "be compute, fix or variable", arg[iarg]);
+	  sprintf(errstr, "perframe quantity '%s' must be compute, fix or "
+                  "variable", arg[iarg]);
 	  error->all(FLERR,errstr);
 	}
 
