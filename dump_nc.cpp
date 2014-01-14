@@ -44,6 +44,7 @@ enum{INT,DOUBLE};  // same as in dump_custom.cpp
 
 const char NC_FRAME_STR[]         = "frame";
 const char NC_SPATIAL_STR[]       = "spatial";
+const char NC_VOIGT_STR[]         = "Voigt";
 const char NC_ATOM_STR[]          = "atom";
 const char NC_CELL_SPATIAL_STR[]  = "cell_spatial";
 const char NC_CELL_ANGULAR_STR[]  = "cell_angular";
@@ -227,7 +228,7 @@ void DumpNC::openfile()
   for (int i = 0; i < n_perat; i++) {
     if (perat[i].dims == THIS_IS_A_COMPUTE) {
       int j = field2index[perat[i].field[0]];
-      if (!fix[j]->peratom_flag)
+      if (!compute[j]->peratom_flag)
 	error->all(FLERR,"DumpNC::init_style: compute does not provide per atom "
 		   "data");
       perat[i].dims = compute[j]->size_peratom_cols;
@@ -263,6 +264,7 @@ void DumpNC::openfile()
       // dimensions
       NCERR( nc_inq_dimid(ncid, NC_FRAME_STR, &frame_dim) );
       NCERR( nc_inq_dimid(ncid, NC_SPATIAL_STR, &spatial_dim) );
+      NCERR( nc_inq_dimid(ncid, NC_VOIGT_STR, &Voigt_dim) );
       NCERR( nc_inq_dimid(ncid, NC_ATOM_STR, &atom_dim) );
       NCERR( nc_inq_dimid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_dim) );
       NCERR( nc_inq_dimid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_dim) );
@@ -341,6 +343,7 @@ void DumpNC::openfile()
       // dimensions
       NCERR( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim) );
       NCERR( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim) );
+      NCERR( nc_def_dim(ncid, NC_VOIGT_STR, 6, &Voigt_dim) );
       NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim) );
       NCERR( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim) );
       NCERR( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim) );
@@ -390,22 +393,54 @@ void DumpNC::openfile()
 	
 	if (perat[i].constant) {
 	  // this quantity will only be written once
-	  if (perat[i].dims == 3)
-	    // this is needed to store x-, y- and z-coordinates
+          if (perat[i].dims == 6) {
+            // this is a tensor in Voigt notation
+            dims[2] = Voigt_dim;
+            NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+                              &perat[i].var) );
+          }
+	  else if (perat[i].dims == 3) {
+	    // this is a vector, we need to store x-, y- and z-coordinates
+            dims[2] = spatial_dim;
 	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
 			      &perat[i].var) );
-	  else
+          }
+	  else if (perat[i].dims == 1) {
 	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
 			      &perat[i].var) );
+          }
+          else {
+            char errstr[1024];
+            sprintf(errstr, "%i dimensions for '%s'. Not sure how to write "
+                    "this to the NetCDF trajectory file.", perat[i].dims,
+                    perat[i].name);
+            error->all(FLERR,errstr);
+          }
 	}
 	else {
-	  if (perat[i].dims == 3)
-	    // this is needed to store x-, y- and z-coordinates
+          if (perat[i].dims == 6) {
+            // this is a tensor in Voigt notation
+            dims[2] = Voigt_dim;
+            NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+                              &perat[i].var) );
+          }
+	  else if (perat[i].dims == 3) {
+	    // this is a vector, we need to store x-, y- and z-coordinates
+            dims[2] = spatial_dim;
 	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
 			      &perat[i].var) );
-	  else
+          }
+	  else if (perat[i].dims == 1) {
 	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
 			      &perat[i].var) );
+          }
+          else {
+            char errstr[1024];
+            sprintf(errstr, "%i dimensions for '%s'. Not sure how to write "
+                    "this to the NetCDF trajectory file.", perat[i].dims,
+                    perat[i].name);
+            error->all(FLERR,errstr);
+          }
 	}
       }
 

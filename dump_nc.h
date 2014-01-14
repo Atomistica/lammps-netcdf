@@ -84,6 +84,7 @@ class DumpNC : public DumpCustom {
 
   int frame_dim;
   int spatial_dim;
+  int Voigt_dim;
   int atom_dim;
   int cell_spatial_dim;
   int cell_angular_dim;
