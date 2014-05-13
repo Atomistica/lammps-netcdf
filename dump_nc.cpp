@@ -33,6 +33,8 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
+#include <unistd.h>
+
 #include <netcdf.h>
 
 #include "atom.h"
