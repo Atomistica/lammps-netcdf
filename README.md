@@ -17,7 +17,7 @@ PACKAGE DESCRIPTION
 
 This is a LAMMPS (http://lammps.sandia.gov/) dump style for output into a NetCDF
 database. The database format follows the AMBER NetCDF trajectory convention
-(http://ambermd.org/netcdf/nctraj.html), but includes extensions to this
+(http://ambermd.org/netcdf/nctraj.xhtml), but includes extensions to this
 convention. These extension are:
 * A variable "cell_origin" (of dimension "frame", "cell_spatial") that contains
   the bottom left corner of the simulation cell.
