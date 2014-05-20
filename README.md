@@ -24,9 +24,9 @@ convention. These extension are:
 * A variable "atom_types" (of dimension "atom") that contains the LAMMPS atom
   type.
 * Any number of additional variables corresponding to per atom scalar, vector
-  or tensor quantities within LAMMPS. Tensor quantities are written in Voigt
-  notation. And additional dimension "Voigt" of length 6 is created for this
-  purpose.
+  or tensor quantities available within LAMMPS. Tensor quantities are written in
+  Voigt notation. An additional dimension "Voigt" of length 6 is created for
+  this purpose.
 
 NetCDF files can be directly visualized with the following tools:
 * Ovito (http://www.ovito.org/). Ovito supports the AMBER convention and all of
