@@ -7,13 +7,13 @@ The person who created these files is Lars Pastewka at
 Fraunhofer IWM (lars.pastewka@iwm.fraunhofer.de).
 Contact him directly if you have questions.
 
-Lars Pastewka
-Fraunhofer-Institut für Werkstoffmechanik IWM
-Wöhlerstraße 11, 79108 Freiburg
-e-mail: lars.pastewka@iwm.fraunhofer.de
+Lars Pastewka  
+Fraunhofer-Institut für Werkstoffmechanik IWM  
+Wöhlerstraße 11, 79108 Freiburg  
+e-mail: lars.pastewka@iwm.fraunhofer.de  
 
-PACKAGE DESCRIPTION:
---------------------
+PACKAGE DESCRIPTION
+-------------------
 
 This is a LAMMPS (http://lammps.sandia.gov/) dump style for output into a NetCDF
 database. The database format follows the AMBER NetCDF trajectory convention
@@ -46,26 +46,26 @@ The list of atom attributes is identical to the 'custom' dump style.
 
 Example:
 
-> dump 1 all nc 100 traj.nc type x y z vx vy vz
+> dump 1 all nc 100 traj.nc type x y z vx vy vz  
 > dump_modify 1 append yes at -1 global c_thermo_pe c_thermo_temp c_thermo_press
 
-INSTALLATION:
--------------
+INSTALLATION
+------------
 
 In your LAMMPS src directory type:
 
-> git clone https://github.com/pastewka/lammps-netcdf.git USER-DUMP-NC
+> git clone https://github.com/pastewka/lammps-netcdf.git USER-DUMP-NC  
 > make yes-user-dump-nc
 
 Note that LAMMPS will need to be linked to NetCDF. This will require a
 modification of your favorite makefile. Please add
 
-> EXTRA_INC += `nc-config --cflags`
+> EXTRA_INC += `nc-config --cflags`  
 > EXTRA_LIB += `nc-config --libs`
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
-Other notes:
-------------
+OTHER NOTES
+-----------
 
 This is package is known to work with LAMMPS 13May14.
