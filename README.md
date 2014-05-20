@@ -18,12 +18,22 @@ PACKAGE DESCRIPTION
 This is a LAMMPS (http://lammps.sandia.gov/) dump style for output into a NetCDF
 database. The database format follows the AMBER NetCDF trajectory convention
 (http://ambermd.org/netcdf/nctraj.html), but includes extensions to this
-convention.
+convention. These extension are:
+* A variable "cell_origin" (of dimension "frame", "cell_spatial") that contains
+  the bottom left corner of the simulation cell.
+* A variable "atom_types" (of dimension "atom") that contains the LAMMPS atom
+  type.
+* Any number of additional variables corresponding to per atom scalar, vector
+  or tensor quantities within LAMMPS. Tensor quantities are written in Voigt
+  notation. And additional dimension "Voigt" of length 6 is created for this
+  purpose.
 
 NetCDF files can be directly visualized with the following tools:
-* Ovito (http://www.ovito.org/)
-* VMD (http://www.ks.uiuc.edu/Research/vmd/)
-* AtomEye (using a patched version from http://www.libatoms.org/)
+* Ovito (http://www.ovito.org/). Ovito supports the AMBER convention and all of
+  the above extensions.
+* VMD (http://www.ks.uiuc.edu/Research/vmd/).
+* AtomEye (http://www.libatoms.org/). The libAtoms version of AtomEye contains
+  a NetCDF reader that is not present in the standard distribution of AtomEye.
 
 Syntax:
 
@@ -37,7 +47,7 @@ keyword = append or double or global
 * append yes: append output to existing NetCDF file
 * append yes at frame: append out to existing NetCDF file and start writing to
     frame given; if negative frame is counted from the end of file.
-* double yes|no: output data as double instead of float
+* double yes|no: output data as double instead of single precision
 * global = list of global (not per atom, but per frame) quantities
     can be variables, compute or fix data prefixed with v_, c_ and f_,
     respectively.
