@@ -70,8 +70,8 @@ In your LAMMPS src directory type:
 Note that LAMMPS will need to be linked to NetCDF. This will require a
 modification of your favorite makefile. Please add
 
-> EXTRA_INC += `nc-config --cflags`  
-> EXTRA_LIB += `nc-config --libs`
+> EXTRA_INC += $(nc-config --cflags)  
+> EXTRA_LIB += $(nc-config --libs)
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
