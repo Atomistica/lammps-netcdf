@@ -94,7 +94,6 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 {
   // arrays for data rearrangement
 
-  rbuf = NULL;
   sort_flag = 1;
   sortcol = 0;
   binary = 1;
@@ -226,10 +225,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 
 DumpNC::~DumpNC()
 {
-  if (filewriter && singlefile_opened)
-    NCERR( nc_close(ncid) );
-
-  if (rbuf) memory->destroy(rbuf);
+  closefile();
 
   delete [] perat;
   if (n_perframe > 0)
@@ -594,6 +590,18 @@ void DumpNC::openfile()
     
       framei = 0;
     }
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+
+void DumpNC::closefile()
+{
+  if (filewriter && singlefile_opened) {
+    NCERR( nc_close(ncid) );
+    singlefile_opened = 0;
+    // append next time DumpNC::openfile is called
+    append_flag = 1;
   }
 }
 

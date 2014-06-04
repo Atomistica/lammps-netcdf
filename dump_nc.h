@@ -95,8 +95,6 @@ class DumpNC : public DumpCustom {
   int n_perframe;              // # of global netcdf (not per-atom) fix props
   nc_perframe_t *perframe;     // global properties
 
-  double **rbuf;               // buf of data lines for data lines rearrangemnt
-
   bool double_precision;       // write everything as double precision
 
   bigint n_buffer;             // size of buffer
@@ -122,9 +120,10 @@ class DumpNC : public DumpCustom {
   int cell_lengths_var;
   int cell_angles_var;
 
-  void openfile();
-  void write_header(bigint);
-  void write_data(int, double *);
+  virtual void openfile();
+  void closefile();
+  virtual void write_header(bigint);
+  virtual void write_data(int, double *);
   void write_prmtop();
 
   virtual int modify_param(int, char **);
