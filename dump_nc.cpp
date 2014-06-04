@@ -123,13 +123,13 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     // name mangling
     // in the AMBER specification
     if (!strcmp(mangled, "x") || !strcmp(mangled, "y") ||
-	!strcmp(mangled, "z")) {
+        !strcmp(mangled, "z")) {
       idim = mangled[0] - 'x';
       ndims = 3;
       strcpy(mangled, "coordinates");
     }
     else if (!strcmp(mangled, "vx") || !strcmp(mangled, "vy") ||
-	     !strcmp(mangled, "vz")) {
+             !strcmp(mangled, "vz")) {
       idim = mangled[1] - 'x';
       ndims = 3;
       strcpy(mangled, "velocities");
@@ -140,25 +140,25 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       constant = true;
     }
     else if (!strcmp(mangled, "xs") || !strcmp(mangled, "ys") ||
-	!strcmp(mangled, "zs")) {
+             !strcmp(mangled, "zs")) {
       idim = mangled[0] - 'x';
       ndims = 3;
       strcpy(mangled, "scaled_coordinates");
     }
     else if (!strcmp(mangled, "xu") || !strcmp(mangled, "yu") ||
-	!strcmp(mangled, "zu")) {
+             !strcmp(mangled, "zu")) {
       idim = mangled[0] - 'x';
       ndims = 3;
       strcpy(mangled, "unwrapped_coordinates");
     }
     else if (!strcmp(mangled, "fx") || !strcmp(mangled, "fy") ||
-	     !strcmp(mangled, "fz")) {
+             !strcmp(mangled, "fz")) {
       idim = mangled[1] - 'x';
       ndims = 3;
       strcpy(mangled, "forces");
     }
     else if (!strcmp(mangled, "mux") || !strcmp(mangled, "muy") ||
-	     !strcmp(mangled, "muz")) {
+             !strcmp(mangled, "muz")) {
       idim = mangled[2] - 'x';
       ndims = 3;
       strcpy(mangled, "mu");
@@ -166,21 +166,21 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     else if (!strncmp(mangled, "c_", 2)) {
       char *ptr = strchr(mangled, '[');
       if (ptr) {
-	if (mangled[strlen(mangled)-1] != ']')
-	  error->all(FLERR,"Missing ']' in dump command");
-	*ptr = '\0';
-	idim = ptr[1] - '1';
-	ndims = THIS_IS_A_COMPUTE;
+        if (mangled[strlen(mangled)-1] != ']')
+          error->all(FLERR,"Missing ']' in dump command");
+        *ptr = '\0';
+        idim = ptr[1] - '1';
+        ndims = THIS_IS_A_COMPUTE;
       }
     }
     else if (!strncmp(mangled, "f_", 2)) {
       char *ptr = strchr(mangled, '[');
       if (ptr) {
-	if (mangled[strlen(mangled)-1] != ']')
-	  error->all(FLERR,"Missing ']' in dump command");
-	*ptr = '\0';
-	idim = ptr[1] - '1';
-	ndims = THIS_IS_A_FIX;
+        if (mangled[strlen(mangled)-1] != ']')
+          error->all(FLERR,"Missing ']' in dump command");
+        *ptr = '\0';
+        idim = ptr[1] - '1';
+        ndims = THIS_IS_A_FIX;
       }
     }
 
@@ -188,7 +188,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     int inc = -1;
     for (int j = 0; j < n_perat && inc < 0; j++) {
       if (!strcmp(perat[j].name, mangled)) {
-	inc = j;
+        inc = j;
       }
     }
 
@@ -198,7 +198,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
       perat[inc].dims = ndims;
       if (ndims < 0) ndims = DUMP_NC_MAX_DIMS;
       for (int j = 0; j < DUMP_NC_MAX_DIMS; j++) {
-	perat[inc].field[j] = -1;
+        perat[inc].field[j] = -1;
       }
       strcpy(perat[inc].name, mangled);
       n_perat++;
@@ -252,10 +252,10 @@ void DumpNC::openfile()
       if (j < 0)
         error->all(FLERR,"Internal error.");
       if (!compute[j]->peratom_flag)
-	error->all(FLERR,"compute does not provide per atom data");
+        error->all(FLERR,"compute does not provide per atom data");
       perat[i].dims = compute[j]->size_peratom_cols;
       if (perat[i].dims > DUMP_NC_MAX_DIMS)
-	error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
+        error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
     }
     else if (perat[i].dims == THIS_IS_A_FIX) {
       int j = -1;
@@ -267,10 +267,10 @@ void DumpNC::openfile()
       if (j < 0)
         error->all(FLERR,"Internal error.");
       if (!fix[j]->peratom_flag)
-	error->all(FLERR,"fix does not provide per atom data");
+        error->all(FLERR,"fix does not provide per atom data");
       perat[i].dims = fix[j]->size_peratom_cols;
       if (perat[i].dims > DUMP_NC_MAX_DIMS)
-	error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
+        error->all(FLERR,"perat[i].dims > DUMP_NC_MAX_DIMS");
     }
   }
 
@@ -913,109 +913,109 @@ int DumpNC::modify_param(int narg, char **arg)
       char *suffix;
 
       if (!strcmp(arg[iarg],"step")) {
-	perframe[i].type = THIS_IS_A_BIGINT;
-	perframe[i].compute = &DumpNC::compute_step;
-	strcpy(perframe[i].name, arg[iarg]);
+        perframe[i].type = THIS_IS_A_BIGINT;
+        perframe[i].compute = &DumpNC::compute_step;
+        strcpy(perframe[i].name, arg[iarg]);
       }
       else if (!strcmp(arg[iarg],"elapsed")) {
-	perframe[i].type = THIS_IS_A_BIGINT;
-	perframe[i].compute = &DumpNC::compute_elapsed;
-	strcpy(perframe[i].name, arg[iarg]);
+        perframe[i].type = THIS_IS_A_BIGINT;
+        perframe[i].compute = &DumpNC::compute_elapsed;
+        strcpy(perframe[i].name, arg[iarg]);
       }
       else if (!strcmp(arg[iarg],"elaplong")) {
-	perframe[i].type = THIS_IS_A_BIGINT;
-	perframe[i].compute = &DumpNC::compute_elapsed_long;
-	strcpy(perframe[i].name, arg[iarg]);
+        perframe[i].type = THIS_IS_A_BIGINT;
+        perframe[i].compute = &DumpNC::compute_elapsed_long;
+        strcpy(perframe[i].name, arg[iarg]);
       }
       else {
 	
-	n = strlen(arg[iarg]);
+        n = strlen(arg[iarg]);
 
-	if (n > 2) {
-	  suffix = new char[n-1];
-	  strcpy(suffix, arg[iarg]+2);
-	}
-	else {
-	  char errstr[1024];
-	  sprintf(errstr, "perframe quantity '%s' must thermo quantity or "
-		  "compute, fix or variable", arg[iarg]);
-	  error->all(FLERR,errstr);
-	}
+        if (n > 2) {
+          suffix = new char[n-1];
+          strcpy(suffix, arg[iarg]+2);
+        }
+        else {
+          char errstr[1024];
+          sprintf(errstr, "perframe quantity '%s' must thermo quantity or "
+                  "compute, fix or variable", arg[iarg]);
+          error->all(FLERR,errstr);
+        }
+        
+        if (!strncmp(arg[iarg], "c_", 2)) {
+          int idim = -1;
+          char *ptr = strchr(suffix, '[');
 
-	if (!strncmp(arg[iarg], "c_", 2)) {
-	  int idim = -1;
-	  char *ptr = strchr(suffix, '[');
+          if (ptr) {
+            if (suffix[strlen(suffix)-1] != ']')
+              error->all(FLERR,"Missing ']' in dump modify command");
+            *ptr = '\0';
+            idim = ptr[1] - '1';
+          }
 
-	  if (ptr) {
-	    if (suffix[strlen(suffix)-1] != ']')
-	      error->all(FLERR,"Missing ']' in dump modify command");
-	    *ptr = '\0';
-	    idim = ptr[1] - '1';
-	  }
+          n = modify->find_compute(suffix);
+          if (n < 0)
+            error->all(FLERR,"Could not find dump modify compute ID");
+          if (modify->compute[n]->peratom_flag != 0)
+            error->all(FLERR,"Dump modify compute ID computes per-atom info");
+          if (idim >= 0 && modify->compute[n]->vector_flag == 0)
+            error->all(FLERR,"Dump modify compute ID does not compute vector");
+          if (idim < 0 && modify->compute[n]->scalar_flag == 0)
+            error->all(FLERR,"Dump modify compute ID does not compute scalar");
 
-	  n = modify->find_compute(suffix);
-	  if (n < 0)
-	    error->all(FLERR,"Could not find dump modify compute ID");
-	  if (modify->compute[n]->peratom_flag != 0)
-	    error->all(FLERR,"Dump modify compute ID computes per-atom info");
-	  if (idim >= 0 && modify->compute[n]->vector_flag == 0)
-	    error->all(FLERR,"Dump modify compute ID does not compute vector");
-	  if (idim < 0 && modify->compute[n]->scalar_flag == 0)
-	    error->all(FLERR,"Dump modify compute ID does not compute scalar");
+          perframe[i].type = THIS_IS_A_COMPUTE;
+          perframe[i].dim = idim;
+          perframe[i].index = n;
+          strcpy(perframe[i].name, arg[iarg]);
+        }
+        else if (!strncmp(arg[iarg], "f_", 2)) {
+          int idim = -1;
+          char *ptr = strchr(suffix, '[');
 
-	  perframe[i].type = THIS_IS_A_COMPUTE;
-	  perframe[i].dim = idim;
-	  perframe[i].index = n;
-	  strcpy(perframe[i].name, arg[iarg]);
-	}
-	else if (!strncmp(arg[iarg], "f_", 2)) {
-	  int idim = -1;
-	  char *ptr = strchr(suffix, '[');
-
-	  if (ptr) {
-	    if (suffix[strlen(suffix)-1] != ']')
-	      error->all(FLERR,"Missing ']' in dump modify command");
-	    *ptr = '\0';
-	    idim = ptr[1] - '1';
-	  }
+          if (ptr) {
+            if (suffix[strlen(suffix)-1] != ']')
+              error->all(FLERR,"Missing ']' in dump modify command");
+            *ptr = '\0';
+            idim = ptr[1] - '1';
+          }
 	  
-	  n = modify->find_fix(suffix);
-	  if (n < 0)
-	    error->all(FLERR,"Could not find dump modify fix ID");
-	  if (modify->fix[n]->peratom_flag != 0)
-	    error->all(FLERR,"Dump modify fix ID computes per-atom info");
-	  if (idim >= 0 && modify->fix[n]->vector_flag == 0)
-	    error->all(FLERR,"Dump modify fix ID does not compute vector");
-	  if (idim < 0 && modify->fix[n]->scalar_flag == 0)
-	    error->all(FLERR,"Dump modify fix ID does not compute vector");
+          n = modify->find_fix(suffix);
+          if (n < 0)
+            error->all(FLERR,"Could not find dump modify fix ID");
+          if (modify->fix[n]->peratom_flag != 0)
+            error->all(FLERR,"Dump modify fix ID computes per-atom info");
+          if (idim >= 0 && modify->fix[n]->vector_flag == 0)
+            error->all(FLERR,"Dump modify fix ID does not compute vector");
+          if (idim < 0 && modify->fix[n]->scalar_flag == 0)
+            error->all(FLERR,"Dump modify fix ID does not compute vector");
 
-	  perframe[i].type = THIS_IS_A_FIX;
-	  perframe[i].dim = idim;
-	  perframe[i].index = n;
-	  strcpy(perframe[i].name, arg[iarg]);
-	}
-	else if (!strncmp(arg[iarg], "v_", 2)) {
-	  n = input->variable->find(suffix);
-	  if (n < 0)
-	    error->all(FLERR,"Could not find dump modify variable ID");
-	  if (!input->variable->equalstyle(n))
-	    error->all(FLERR,"Dump modify variable must be of style equal");
+          perframe[i].type = THIS_IS_A_FIX;
+          perframe[i].dim = idim;
+          perframe[i].index = n;
+          strcpy(perframe[i].name, arg[iarg]);
+        }
+        else if (!strncmp(arg[iarg], "v_", 2)) {
+          n = input->variable->find(suffix);
+          if (n < 0)
+            error->all(FLERR,"Could not find dump modify variable ID");
+          if (!input->variable->equalstyle(n))
+            error->all(FLERR,"Dump modify variable must be of style equal");
 
-	  perframe[i].type = THIS_IS_A_VARIABLE;
-	  perframe[i].dim = 1;
-	  perframe[i].index = n;
-	  strcpy(perframe[i].name, arg[iarg]);
-	  strcpy(perframe[i].id, suffix);
-	}
-	else {
-	  char errstr[1024];
-	  sprintf(errstr, "perframe quantity '%s' must be compute, fix or "
+          perframe[i].type = THIS_IS_A_VARIABLE;
+          perframe[i].dim = 1;
+          perframe[i].index = n;
+          strcpy(perframe[i].name, arg[iarg]);
+          strcpy(perframe[i].id, suffix);
+        }
+        else {
+          char errstr[1024];
+          sprintf(errstr, "perframe quantity '%s' must be compute, fix or "
                   "variable", arg[iarg]);
-	  error->all(FLERR,errstr);
-	}
+          error->all(FLERR,errstr);
+        }
 
-	delete [] suffix;
-
+        delete [] suffix;
+    
       }
     }
 
@@ -1092,7 +1092,7 @@ void DumpNC::ncerr(int err, int line)
   if (err != NC_NOERR) {
     char errstr[1024];
     sprintf(errstr, "NetCDF failed with error '%s' in line %i of %s.",
-	    nc_strerror(err), line, __FILE__);
+            nc_strerror(err), line, __FILE__);
     error->one(FLERR,errstr);
   }
 }
