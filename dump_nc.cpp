@@ -602,6 +602,8 @@ void DumpNC::closefile()
     singlefile_opened = 0;
     // append next time DumpNC::openfile is called
     append_flag = 1;
+    // when file is close, first frame is 1
+    framei++;
   }
 }
 
@@ -609,6 +611,10 @@ void DumpNC::closefile()
 
 void DumpNC::write()
 {
+  // open file
+
+  openfile();
+
   // need to write per-frame (global) properties here since they may come
   // from computes. write_header below is only called from the writing
   // processes, but modify->compute[j]->compute_* must be called from all
@@ -665,6 +671,10 @@ void DumpNC::write()
   // call write of superclass
 
   Dump::write();
+
+  // close file. this ensures data is flushed and mimized data corruption
+
+  closefile();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1080,7 +1090,7 @@ void DumpNC::write_prmtop()
   for (int i = 0; i < ntotalgr; i++) {
     fprintf(f, "%16.5e", 1.0);
     if ((i+1) % 5 == 0)
-      fprintf(f, "\n");
+        fprintf(f, "\n");
   }
   fclose(f);
 }
