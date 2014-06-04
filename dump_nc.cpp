@@ -311,44 +311,44 @@ void DumpNC::openfile()
 
       // variables specified in the input file
       for (int i = 0; i < n_perat; i++) {
-	nc_type xtype;
+    nc_type xtype;
 
-	// Type mangling
-	if (vtype[perat[i].field[0]] == INT) {
-	  xtype = NC_INT;
-	}
-	else {
-	  if (double_precision)
-	    xtype = NC_DOUBLE;
-	  else
-	    xtype = NC_FLOAT;
-	}
-	
-	if (perat[i].constant) {
-	  // this quantity will only be written once
-	  if (perat[i].dims == 3)
-	    // this is needed to store x-, y- and z-coordinates
-	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
-	  else
-	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
-	}
-	else {
-	  if (perat[i].dims == 3)
-	    // this is needed to store x-, y- and z-coordinates
-	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
-	  else
-	    NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
-	}
+    // Type mangling
+    if (vtype[perat[i].field[0]] == INT) {
+      xtype = NC_INT;
+    }
+    else {
+      if (double_precision)
+        xtype = NC_DOUBLE;
+      else
+        xtype = NC_FLOAT;
+    }
+    
+    if (perat[i].constant) {
+      // this quantity will only be written once
+      if (perat[i].dims == 3)
+        // this is needed to store x-, y- and z-coordinates
+        NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+      else
+        NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+    }
+    else {
+      if (perat[i].dims == 3)
+        // this is needed to store x-, y- and z-coordinates
+        NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+      else
+        NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+    }
       }
 
       // perframe variables
       for (int i = 0; i < n_perframe; i++) {
-	if (perframe[i].type == THIS_IS_A_BIGINT) {
-	  NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
-	}
-	else {
-	  NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
-	}
+    if (perframe[i].type == THIS_IS_A_BIGINT) {
+      NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+    }
+    else {
+      NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+    }
       }
     
       size_t nframes;
@@ -382,24 +382,24 @@ void DumpNC::openfile()
       dims[0] = spatial_dim;
       NCERR( nc_def_var(ncid, NC_SPATIAL_STR, NC_CHAR, 1, dims, &spatial_var) );
       NCERR( nc_def_var(ncid, NC_CELL_SPATIAL_STR, NC_CHAR, 1, dims,
-		      &cell_spatial_var) );
+              &cell_spatial_var) );
       dims[0] = spatial_dim;
       dims[1] = label_dim;
       NCERR( nc_def_var(ncid, NC_CELL_ANGULAR_STR, NC_CHAR, 2, dims,
-			&cell_angular_var) );
+            &cell_angular_var) );
       
       dims[0] = frame_dim;
       NCERR( nc_def_var(ncid, NC_TIME_STR, NC_DOUBLE, 1, dims, &time_var) );
       dims[0] = frame_dim;
       dims[1] = cell_spatial_dim;
       NCERR( nc_def_var(ncid, NC_CELL_ORIGIN_STR, NC_DOUBLE, 2, dims,
-			&cell_origin_var) );
+            &cell_origin_var) );
       NCERR( nc_def_var(ncid, NC_CELL_LENGTHS_STR, NC_DOUBLE, 2, dims,
-			&cell_lengths_var) );
+            &cell_lengths_var) );
       dims[0] = frame_dim;
       dims[1] = cell_angular_dim;
       NCERR( nc_def_var(ncid, NC_CELL_ANGLES_STR, NC_DOUBLE, 2, dims,
-			&cell_angles_var) );
+            &cell_angles_var) );
 
       // variables specified in the input file
       dims[0] = frame_dim;
@@ -407,36 +407,36 @@ void DumpNC::openfile()
       dims[2] = spatial_dim;
 
       for (int i = 0; i < n_perat; i++) {
-	nc_type xtype;
+    nc_type xtype;
 
-	// Type mangling
-	if (vtype[perat[i].field[0]] == INT) {
-	  xtype = NC_INT;
-	}
-	else {
-	  if (double_precision)
-	    xtype = NC_DOUBLE;
-	  else
-	    xtype = NC_FLOAT;
-	}
-	
-	if (perat[i].constant) {
-	  // this quantity will only be written once
+    // Type mangling
+    if (vtype[perat[i].field[0]] == INT) {
+      xtype = NC_INT;
+    }
+    else {
+      if (double_precision)
+        xtype = NC_DOUBLE;
+      else
+        xtype = NC_FLOAT;
+    }
+    
+    if (perat[i].constant) {
+      // this quantity will only be written once
           if (perat[i].dims == 6) {
             // this is a tensor in Voigt notation
             dims[2] = Voigt_dim;
             NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
                               &perat[i].var) );
           }
-	  else if (perat[i].dims == 3) {
-	    // this is a vector, we need to store x-, y- and z-coordinates
+      else if (perat[i].dims == 3) {
+        // this is a vector, we need to store x-, y- and z-coordinates
             dims[2] = spatial_dim;
-	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
-			      &perat[i].var) );
+        NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+                  &perat[i].var) );
           }
-	  else if (perat[i].dims == 1) {
-	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
-			      &perat[i].var) );
+      else if (perat[i].dims == 1) {
+        NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
+                  &perat[i].var) );
           }
           else {
             char errstr[1024];
@@ -445,23 +445,23 @@ void DumpNC::openfile()
                     perat[i].name);
             error->all(FLERR,errstr);
           }
-	}
-	else {
+    }
+    else {
           if (perat[i].dims == 6) {
             // this is a tensor in Voigt notation
             dims[2] = Voigt_dim;
             NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
                               &perat[i].var) );
           }
-	  else if (perat[i].dims == 3) {
-	    // this is a vector, we need to store x-, y- and z-coordinates
+      else if (perat[i].dims == 3) {
+        // this is a vector, we need to store x-, y- and z-coordinates
             dims[2] = spatial_dim;
-	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
-			      &perat[i].var) );
+        NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+                  &perat[i].var) );
           }
-	  else if (perat[i].dims == 1) {
-	    NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
-			      &perat[i].var) );
+      else if (perat[i].dims == 1) {
+        NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
+                  &perat[i].var) );
           }
           else {
             char errstr[1024];
@@ -470,99 +470,99 @@ void DumpNC::openfile()
                     perat[i].name);
             error->all(FLERR,errstr);
           }
-	}
+    }
       }
 
       // perframe variables
       for (int i = 0; i < n_perframe; i++) {
-	if (perframe[i].type == THIS_IS_A_BIGINT) {
-	  NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
-			    &perframe[i].var) );
-	}
-	else {
-	  NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
-			    &perframe[i].var) );
-	}
+    if (perframe[i].type == THIS_IS_A_BIGINT) {
+      NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
+                &perframe[i].var) );
+    }
+    else {
+      NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
+                &perframe[i].var) );
+    }
       }
 
       // attributes
       NCERR( nc_put_att_text(ncid, NC_GLOBAL, "Conventions",
-			     5, "AMBER") );
+                 5, "AMBER") );
       NCERR( nc_put_att_text(ncid, NC_GLOBAL, "ConventionVersion",
-			     3, "1.0") );
+                 3, "1.0") );
       
       NCERR( nc_put_att_text(ncid, NC_GLOBAL, "program",
-			     6, "LAMMPS") );
+                 6, "LAMMPS") );
       NCERR( nc_put_att_text(ncid, NC_GLOBAL, "programVersion",
-			     strlen(universe->version), universe->version) );
+                 strlen(universe->version), universe->version) );
 
       // units
       if (!strcmp(update->unit_style, "lj")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       2, "lj") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       2, "lj") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       2, "lj") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   2, "lj") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   2, "lj") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   2, "lj") );
       }
       else if (!strcmp(update->unit_style, "real")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       11, "femtosecond") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       8, "Angstrom") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       8, "Angstrom") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   11, "femtosecond") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   8, "Angstrom") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   8, "Angstrom") );
       }
       else if (!strcmp(update->unit_style, "metal")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       10, "picosecond") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       8, "Angstrom") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       8, "Angstrom") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   10, "picosecond") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   8, "Angstrom") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   8, "Angstrom") );
       }
       else if (!strcmp(update->unit_style, "si")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       6, "second") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       5, "meter") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       5, "meter") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   6, "second") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   5, "meter") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   5, "meter") );
       }
       else if (!strcmp(update->unit_style, "cgs")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       6, "second") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       10, "centimeter") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       10, "centimeter") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   6, "second") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   10, "centimeter") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   10, "centimeter") );
       }
       else if (!strcmp(update->unit_style, "electron")) {
-	NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
-			       11, "femtosecond") );
-	NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
-			       4, "Bohr") );
-	NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
-			       4, "Bohr") );
+    NCERR( nc_put_att_text(ncid, time_var, NC_UNITS_STR,
+                   11, "femtosecond") );
+    NCERR( nc_put_att_text(ncid, cell_origin_var, NC_UNITS_STR,
+                   4, "Bohr") );
+    NCERR( nc_put_att_text(ncid, cell_lengths_var, NC_UNITS_STR,
+                   4, "Bohr") );
       }
       else {
-	char errstr[1024];
-	sprintf(errstr, "Unsupported unit style '%s'", update->unit_style);
-	error->all(FLERR,errstr);
+    char errstr[1024];
+    sprintf(errstr, "Unsupported unit style '%s'", update->unit_style);
+    error->all(FLERR,errstr);
       }
       
       NCERR( nc_put_att_text(ncid, cell_angles_var, NC_UNITS_STR,
-			     6, "degree") );
+                 6, "degree") );
 
       d[0] = update->dt;
       NCERR( nc_put_att_double(ncid, time_var, NC_SCALE_FACTOR_STR,
-			       NC_DOUBLE, 1, d) );
+                   NC_DOUBLE, 1, d) );
       d[0] = 1.0;
       NCERR( nc_put_att_double(ncid, cell_origin_var, NC_SCALE_FACTOR_STR,
-			       NC_DOUBLE, 1, d) );
+                   NC_DOUBLE, 1, d) );
       d[0] = 1.0;
       NCERR( nc_put_att_double(ncid, cell_lengths_var, NC_SCALE_FACTOR_STR,
-			       NC_DOUBLE, 1, d) );
+                   NC_DOUBLE, 1, d) );
       
       /*
        * Finished with definition
@@ -707,7 +707,7 @@ void DumpNC::write_header(bigint n)
       cell_lengths[2] = sqrt(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]);
 
       cosalpha = (h[5]*h[4]+h[1]*h[3])/
-	sqrt((h[1]*h[1]+h[5]*h[5])*(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]));
+    sqrt((h[1]*h[1]+h[5]*h[5])*(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]));
       cosbeta = h[4]/sqrt(h[2]*h[2]+h[3]*h[3]+h[4]*h[4]);
       cosgamma = h[5]/sqrt(h[1]*h[1]+h[5]*h[5]);
 
@@ -720,11 +720,11 @@ void DumpNC::write_header(bigint n)
     count[1] = 3;
     NCERR( nc_put_var1_double(ncid, time_var, start, &time) );
     NCERR( nc_put_vara_double(ncid, cell_origin_var, start, count,
-			      cell_origin) );
+                  cell_origin) );
     NCERR( nc_put_vara_double(ncid, cell_lengths_var, start, count,
-			      cell_lengths) );
+                  cell_lengths) );
     NCERR( nc_put_vara_double(ncid, cell_angles_var, start, count,
-			      cell_angles) );
+                  cell_angles) );
   }
 
   ndata = n;
@@ -756,7 +756,7 @@ void DumpNC::write_data(int n, double *mybuf)
       memory->srealloc(int_buffer, n*sizeof(int), "DumpNC::int_buffer");
     double_buffer = (double *)
       memory->srealloc(double_buffer, n*sizeof(double),
-		       "DumpNC::double_buffer");
+               "DumpNC::double_buffer");
   }
 
   start[0] = framei;
@@ -778,90 +778,90 @@ void DumpNC::write_data(int n, double *mybuf)
       // integers
       if (perat[i].dims > 1) {
 
-	for (int idim = 0; idim < perat[i].dims; idim++) {
-	  iaux = perat[i].field[idim];
+    for (int idim = 0; idim < perat[i].dims; idim++) {
+      iaux = perat[i].field[idim];
 
-	  if (iaux >= 0) {
-	    for (int j = 0; j < n; j++, iaux+=size_one) {
-	      int_buffer[j] = mybuf[iaux];
-	    }
+      if (iaux >= 0) {
+        for (int j = 0; j < n; j++, iaux+=size_one) {
+          int_buffer[j] = mybuf[iaux];
+        }
       
-	    start[2] = idim;
+        start[2] = idim;
 
-	    if (perat[i].constant) {
-	      if (perat[i].ndumped < ntotalgr) {
-		NCERR( nc_put_vars_int(ncid, perat[i].var,
-				       start+1, count+1, stride+1,
-				       int_buffer) );
-		perat[i].ndumped += n;
-	      }
-	    }
-	    else
-	      NCERR( nc_put_vars_int(ncid, perat[i].var, start, count, stride,
-				     int_buffer) );
-	  }
-	}
+        if (perat[i].constant) {
+          if (perat[i].ndumped < ntotalgr) {
+        NCERR( nc_put_vars_int(ncid, perat[i].var,
+                       start+1, count+1, stride+1,
+                       int_buffer) );
+        perat[i].ndumped += n;
+          }
+        }
+        else
+          NCERR( nc_put_vars_int(ncid, perat[i].var, start, count, stride,
+                     int_buffer) );
+      }
+    }
       }
       else {
-	for (int j = 0; j < n; j++, iaux+=size_one) {
-	  int_buffer[j] = mybuf[iaux];
-	}
+    for (int j = 0; j < n; j++, iaux+=size_one) {
+      int_buffer[j] = mybuf[iaux];
+    }
 
-	if (perat[i].constant) {
-	  if (perat[i].ndumped < ntotalgr) {
-	    NCERR( nc_put_vara_int(ncid, perat[i].var, start+1, count+1,
-				   int_buffer) );
-	    perat[i].ndumped += n;
-	  }
-	}
-	else
-	  NCERR( nc_put_vara_int(ncid, perat[i].var, start, count,
-				 int_buffer) );
+    if (perat[i].constant) {
+      if (perat[i].ndumped < ntotalgr) {
+        NCERR( nc_put_vara_int(ncid, perat[i].var, start+1, count+1,
+                   int_buffer) );
+        perat[i].ndumped += n;
+      }
+    }
+    else
+      NCERR( nc_put_vara_int(ncid, perat[i].var, start, count,
+                 int_buffer) );
       }
     }
     else {
       // doubles
       if (perat[i].dims > 1) {
 
-	for (int idim = 0; idim < perat[i].dims; idim++) {
-	  iaux = perat[i].field[idim];
+    for (int idim = 0; idim < perat[i].dims; idim++) {
+      iaux = perat[i].field[idim];
 
           if (iaux >= 0) {
-	    for (int j = 0; j < n; j++, iaux+=size_one) {
-	      double_buffer[j] = mybuf[iaux];
-	    }
+        for (int j = 0; j < n; j++, iaux+=size_one) {
+          double_buffer[j] = mybuf[iaux];
+        }
       
-	    start[2] = idim;
+        start[2] = idim;
 
-	    if (perat[i].constant) {
-	      if (perat[i].ndumped < ntotalgr) {
-		NCERR( nc_put_vars_double(ncid, perat[i].var,
-					  start+1, count+1, stride+1,
-					  double_buffer) );
-		perat[i].ndumped += n;
-	      }
-	    }
-	    else
-	      NCERR( nc_put_vars_double(ncid, perat[i].var, start, count,
-					stride,	double_buffer) );
-	  }
-	}
+        if (perat[i].constant) {
+          if (perat[i].ndumped < ntotalgr) {
+        NCERR( nc_put_vars_double(ncid, perat[i].var,
+                      start+1, count+1, stride+1,
+                      double_buffer) );
+        perat[i].ndumped += n;
+          }
+        }
+        else
+          NCERR( nc_put_vars_double(ncid, perat[i].var, start, count,
+                    stride, double_buffer) );
+      }
+    }
       }
       else {
-	for (int j = 0; j < n; j++, iaux+=size_one) {
-	  double_buffer[j] = mybuf[iaux];
-	}
+    for (int j = 0; j < n; j++, iaux+=size_one) {
+      double_buffer[j] = mybuf[iaux];
+    }
 
-	if (perat[i].constant) {
-	  if (perat[i].ndumped < ntotalgr) {
-	    NCERR( nc_put_vara_double(ncid, perat[i].var, start+1, count+1,
-				      double_buffer) );
-	    perat[i].ndumped += n;
-	  }
-	}
-	else
-	  NCERR( nc_put_vara_double(ncid, perat[i].var, start, count,
-				    double_buffer) );
+    if (perat[i].constant) {
+      if (perat[i].ndumped < ntotalgr) {
+        NCERR( nc_put_vara_double(ncid, perat[i].var, start+1, count+1,
+                      double_buffer) );
+        perat[i].ndumped += n;
+      }
+    }
+    else
+      NCERR( nc_put_vara_double(ncid, perat[i].var, start, count,
+                    double_buffer) );
       }
     }
   }
@@ -928,7 +928,7 @@ int DumpNC::modify_param(int narg, char **arg)
         strcpy(perframe[i].name, arg[iarg]);
       }
       else {
-	
+    
         n = strlen(arg[iarg]);
 
         if (n > 2) {
@@ -978,7 +978,7 @@ int DumpNC::modify_param(int narg, char **arg)
             *ptr = '\0';
             idim = ptr[1] - '1';
           }
-	  
+      
           n = modify->find_fix(suffix);
           if (n < 0)
             error->all(FLERR,"Could not find dump modify fix ID");
