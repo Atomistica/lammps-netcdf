@@ -37,7 +37,7 @@ NetCDF files can be directly visualized with the following tools:
 
 Syntax:
 
-> dump ID group-ID nc N file args 
+> dump ID group-ID nc N file args  
 > dump_modify ID keyword values
 
 with
