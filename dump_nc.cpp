@@ -726,6 +726,13 @@ void DumpNC::write_header(bigint n)
       cell_angles[2] = acos(cosgamma)*180.0/MY_PI;
     }
 
+    // Recent AMBER conventions say that nonperiodic boundaries should have
+    // 'cell_lengths' set to zero.
+    for (int dim = 0; dim < 3; dim++) {
+        if (!domain->periodicity[dim])
+            cell_lengths[dim] = 0.0;
+    }
+
     count[0] = 1;
     count[1] = 3;
     NCERR( nc_put_var1_double(ncid, time_var, start, &time) );
