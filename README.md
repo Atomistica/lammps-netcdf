@@ -27,6 +27,7 @@ convention. These extension are:
   or tensor quantities available within LAMMPS. Tensor quantities are written in
   Voigt notation. An additional dimension "Voigt" of length 6 is created for
   this purpose.
+* Possibility to output to an HDF5 database.
 
 NetCDF files can be directly visualized with the following tools:
 * Ovito (http://www.ovito.org/). Ovito supports the AMBER convention and all of
