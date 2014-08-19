@@ -128,7 +128,7 @@ class DumpNC : public DumpCustom {
 
   virtual int modify_param(int, char **);
 
-  void ncerr(int, int);
+  void ncerr(int, const char *, int);
 
   void compute_step(void *);
   void compute_elapsed(void *);

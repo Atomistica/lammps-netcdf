@@ -85,7 +85,8 @@ const int THIS_IS_A_BIGINT   = -4;
 
 /* ---------------------------------------------------------------------- */
 
-#define NCERR(x) ncerr(x, __LINE__)
+#define NCERR(x) ncerr(x, NULL, __LINE__)
+#define NCERRX(x, descr) ncerr(x, descr, __LINE__)
 
 /* ---------------------------------------------------------------------- */
 
@@ -288,26 +289,35 @@ void DumpNC::openfile()
       if (singlefile_opened) return;
       singlefile_opened = 1;
 
-      NCERR( nc_open(filename, NC_WRITE, &ncid) );
+      NCERRX( nc_open(filename, NC_WRITE, &ncid), filename );
     
       // dimensions
-      NCERR( nc_inq_dimid(ncid, NC_FRAME_STR, &frame_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_SPATIAL_STR, &spatial_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_VOIGT_STR, &Voigt_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_ATOM_STR, &atom_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_dim) );
-      NCERR( nc_inq_dimid(ncid, NC_LABEL_STR, &label_dim) );
+      NCERRX( nc_inq_dimid(ncid, NC_FRAME_STR, &frame_dim), NC_FRAME_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_SPATIAL_STR, &spatial_dim),
+	      NC_SPATIAL_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_VOIGT_STR, &Voigt_dim), NC_VOIGT_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_ATOM_STR, &atom_dim), NC_ATOM_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_dim),
+	      NC_CELL_SPATIAL_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_dim),
+	      NC_CELL_ANGULAR_STR );
+      NCERRX( nc_inq_dimid(ncid, NC_LABEL_STR, &label_dim), NC_LABEL_STR );
 
       // default variables
-      NCERR( nc_inq_varid(ncid, NC_SPATIAL_STR, &spatial_var) );
-      NCERR( nc_inq_varid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_var) );
-      NCERR( nc_inq_varid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_var) );
+      NCERRX( nc_inq_varid(ncid, NC_SPATIAL_STR, &spatial_var),
+	      NC_SPATIAL_STR );
+      NCERRX( nc_inq_varid(ncid, NC_CELL_SPATIAL_STR, &cell_spatial_var),
+	      NC_CELL_SPATIAL_STR);
+      NCERRX( nc_inq_varid(ncid, NC_CELL_ANGULAR_STR, &cell_angular_var),
+	      NC_CELL_ANGULAR_STR);
       
-      NCERR( nc_inq_varid(ncid, NC_TIME_STR, &time_var) );
-      NCERR( nc_inq_varid(ncid, NC_CELL_ORIGIN_STR, &cell_origin_var) );
-      NCERR( nc_inq_varid(ncid, NC_CELL_LENGTHS_STR, &cell_lengths_var) );
-      NCERR( nc_inq_varid(ncid, NC_CELL_ANGLES_STR, &cell_angles_var) );
+      NCERRX( nc_inq_varid(ncid, NC_TIME_STR, &time_var), NC_TIME_STR );
+      NCERRX( nc_inq_varid(ncid, NC_CELL_ORIGIN_STR, &cell_origin_var),
+	      NC_CELL_ORIGIN_STR );
+      NCERRX( nc_inq_varid(ncid, NC_CELL_LENGTHS_STR, &cell_lengths_var),
+	      NC_CELL_LENGTHS_STR);
+      NCERRX( nc_inq_varid(ncid, NC_CELL_ANGLES_STR, &cell_angles_var),
+	      NC_CELL_ANGLES_STR);
 
       // variables specified in the input file
       for (int i = 0; i < n_perat; i++) {
@@ -328,26 +338,32 @@ void DumpNC::openfile()
           // this quantity will only be written once
           if (perat[i].dims == 3)
             // this is needed to store x-, y- and z-coordinates
-            NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
+		    perat[i].name );
           else
-            NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
+		    perat[i].name);
         }
         else {
           if (perat[i].dims == 3)
             // this is needed to store x-, y- and z-coordinates
-            NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
+		    perat[i].name );
           else
-            NCERR( nc_inq_varid(ncid, perat[i].name, &perat[i].var) );
+            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
+		    perat[i].name );
         }
       }
 
       // perframe variables
       for (int i = 0; i < n_perframe; i++) {
         if (perframe[i].type == THIS_IS_A_BIGINT) {
-          NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+          NCERRX( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var),
+		  perframe[i].name );
         }
         else {
-          NCERR( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var) );
+          NCERRX( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var),
+		  perframe[i].name );
         }
       }
     
@@ -367,39 +383,49 @@ void DumpNC::openfile()
       if (singlefile_opened) return;
       singlefile_opened = 1;
 
-      NCERR( nc_create(filename, NC_64BIT_OFFSET, &ncid) );
+      NCERRX( nc_create(filename, NC_64BIT_OFFSET, &ncid),
+	      filename );
     
       // dimensions
-      NCERR( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim) );
-      NCERR( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim) );
-      NCERR( nc_def_dim(ncid, NC_VOIGT_STR, 6, &Voigt_dim) );
-      NCERR( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim) );
-      NCERR( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim) );
-      NCERR( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim) );
-      NCERR( nc_def_dim(ncid, NC_LABEL_STR, 10, &label_dim) );
+      NCERRX( nc_def_dim(ncid, NC_FRAME_STR, NC_UNLIMITED, &frame_dim),
+	      NC_FRAME_STR );
+      NCERRX( nc_def_dim(ncid, NC_SPATIAL_STR, 3, &spatial_dim),
+	      NC_SPATIAL_STR );
+      NCERRX( nc_def_dim(ncid, NC_VOIGT_STR, 6, &Voigt_dim),
+	      NC_VOIGT_STR );
+      NCERRX( nc_def_dim(ncid, NC_ATOM_STR, ntotalgr, &atom_dim),
+	      NC_ATOM_STR );
+      NCERRX( nc_def_dim(ncid, NC_CELL_SPATIAL_STR, 3, &cell_spatial_dim),
+	      NC_CELL_SPATIAL_STR );
+      NCERRX( nc_def_dim(ncid, NC_CELL_ANGULAR_STR, 3, &cell_angular_dim),
+	      NC_CELL_ANGULAR_STR );
+      NCERRX( nc_def_dim(ncid, NC_LABEL_STR, 10, &label_dim),
+	      NC_LABEL_STR );
 
       // default variables
       dims[0] = spatial_dim;
-      NCERR( nc_def_var(ncid, NC_SPATIAL_STR, NC_CHAR, 1, dims, &spatial_var) );
-      NCERR( nc_def_var(ncid, NC_CELL_SPATIAL_STR, NC_CHAR, 1, dims,
-              &cell_spatial_var) );
+      NCERRX( nc_def_var(ncid, NC_SPATIAL_STR, NC_CHAR, 1, dims, &spatial_var),
+	      NC_SPATIAL_STR );
+      NCERRX( nc_def_var(ncid, NC_CELL_SPATIAL_STR, NC_CHAR, 1, dims,
+			 &cell_spatial_var), NC_CELL_SPATIAL_STR );
       dims[0] = spatial_dim;
       dims[1] = label_dim;
-      NCERR( nc_def_var(ncid, NC_CELL_ANGULAR_STR, NC_CHAR, 2, dims,
-            &cell_angular_var) );
+      NCERRX( nc_def_var(ncid, NC_CELL_ANGULAR_STR, NC_CHAR, 2, dims,
+			 &cell_angular_var), NC_CELL_ANGULAR_STR );
       
       dims[0] = frame_dim;
-      NCERR( nc_def_var(ncid, NC_TIME_STR, NC_DOUBLE, 1, dims, &time_var) );
+      NCERRX( nc_def_var(ncid, NC_TIME_STR, NC_DOUBLE, 1, dims, &time_var),
+	      NC_TIME_STR);
       dims[0] = frame_dim;
       dims[1] = cell_spatial_dim;
-      NCERR( nc_def_var(ncid, NC_CELL_ORIGIN_STR, NC_DOUBLE, 2, dims,
-            &cell_origin_var) );
-      NCERR( nc_def_var(ncid, NC_CELL_LENGTHS_STR, NC_DOUBLE, 2, dims,
-            &cell_lengths_var) );
+      NCERRX( nc_def_var(ncid, NC_CELL_ORIGIN_STR, NC_DOUBLE, 2, dims,
+			 &cell_origin_var), NC_CELL_ORIGIN_STR );
+      NCERRX( nc_def_var(ncid, NC_CELL_LENGTHS_STR, NC_DOUBLE, 2, dims,
+			 &cell_lengths_var), NC_CELL_LENGTHS_STR );
       dims[0] = frame_dim;
       dims[1] = cell_angular_dim;
-      NCERR( nc_def_var(ncid, NC_CELL_ANGLES_STR, NC_DOUBLE, 2, dims,
-            &cell_angles_var) );
+      NCERRX( nc_def_var(ncid, NC_CELL_ANGLES_STR, NC_DOUBLE, 2, dims,
+			 &cell_angles_var), NC_CELL_ANGLES_STR );
 
       // variables specified in the input file
       dims[0] = frame_dim;
@@ -425,18 +451,18 @@ void DumpNC::openfile()
           if (perat[i].dims == 6) {
             // this is a tensor in Voigt notation
             dims[2] = Voigt_dim;
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+			       &perat[i].var), perat[i].name );
           }
           else if (perat[i].dims == 3) {
             // this is a vector, we need to store x-, y- and z-coordinates
             dims[2] = spatial_dim;
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 2, dims+1,
+			       &perat[i].var), perat[i].name );
           }
           else if (perat[i].dims == 1) {
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 1, dims+1,
+			       &perat[i].var), perat[i].name );
           }
           else {
             char errstr[1024];
@@ -450,18 +476,18 @@ void DumpNC::openfile()
           if (perat[i].dims == 6) {
             // this is a tensor in Voigt notation
             dims[2] = Voigt_dim;
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+			       &perat[i].var), perat[i].name );
           }
           else if (perat[i].dims == 3) {
             // this is a vector, we need to store x-, y- and z-coordinates
             dims[2] = spatial_dim;
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 3, dims,
+			       &perat[i].var), perat[i].name );
           }
           else if (perat[i].dims == 1) {
-            NCERR( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
-                              &perat[i].var) );
+            NCERRX( nc_def_var(ncid, perat[i].name, xtype, 2, dims,
+			       &perat[i].var), perat[i].name );
           }
           else {
             char errstr[1024];
@@ -476,12 +502,12 @@ void DumpNC::openfile()
       // perframe variables
       for (int i = 0; i < n_perframe; i++) {
         if (perframe[i].type == THIS_IS_A_BIGINT) {
-          NCERR( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
-                            &perframe[i].var) );
+          NCERRX( nc_def_var(ncid, perframe[i].name, NC_LONG, 1, dims,
+			     &perframe[i].var), perframe[i].name );
         }
         else {
-          NCERR( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
-                            &perframe[i].var) );
+          NCERRX( nc_def_var(ncid, perframe[i].name, NC_DOUBLE, 1, dims,
+			     &perframe[i].var), perframe[i].name );
         }
       }
 
@@ -1104,12 +1130,18 @@ void DumpNC::write_prmtop()
 
 /* ---------------------------------------------------------------------- */
 
-void DumpNC::ncerr(int err, int line)
+void DumpNC::ncerr(int err, const char *descr, int line)
 {
   if (err != NC_NOERR) {
     char errstr[1024];
-    sprintf(errstr, "NetCDF failed with error '%s' in line %i of %s.",
-            nc_strerror(err), line, __FILE__);
+    if (descr) {
+      sprintf(errstr, "NetCDF failed with error '%s' (while accessing '%s') "
+	      " in line %i of %s.", nc_strerror(err), descr, line, __FILE__);
+    }
+    else {
+      sprintf(errstr, "NetCDF failed with error '%s' in line %i of %s.",
+	      nc_strerror(err), line, __FILE__);
+    }
     error->one(FLERR,errstr);
   }
 }
