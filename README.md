@@ -87,7 +87,7 @@ to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 OTHER NOTES
 -----------
 
-NetCDF: http://www.unidata.ucar.edu/software/netcdf/
+NetCDF: http://www.unidata.ucar.edu/software/netcdf/ 
 Parallel netCDF: http://trac.mcs.anl.gov/projects/parallel-netcdf/
 
 This is package is known to work with LAMMPS 15Aug14.
