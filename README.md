@@ -21,8 +21,6 @@ database. The database format follows the AMBER NetCDF trajectory convention
 convention. These extension are:
 * A variable "cell_origin" (of dimension "frame", "cell_spatial") that contains
   the bottom left corner of the simulation cell.
-* A variable "atom_types" (of dimension "atom") that contains the LAMMPS atom
-  type.
 * Any number of additional variables corresponding to per atom scalar, vector
   or tensor quantities available within LAMMPS. Tensor quantities are written in
   Voigt notation. An additional dimension "Voigt" of length 6 is created for
@@ -38,7 +36,7 @@ NetCDF files can be directly visualized with the following tools:
 
 Syntax:
 
-> dump ID group-ID nc N file args  
+> dump ID group-ID nc|nc/mpiio N file args  
 > dump_modify ID keyword values
 
 with
@@ -53,12 +51,19 @@ keyword = append or double or global
     can be variables, compute or fix data prefixed with v_, c_ and f_,
     respectively.
 
-The list of atom attributes is identical to the 'custom' dump style.
+The list of atom attributes is identical to the 'custom' dump style. The 'nc'
+dump style uses the standard NetCDF library and collects all data onto a single
+processor before writing. The 'nc/mpiio' dump style uses parallel-netcdf and
+MPI-IO and has better performance on a larger number of processors. Note that
+'nc' outputs all atoms sorted by tag while 'nc/mpiio' outputs in order of the
+MPI rank.
 
-Example:
+Examples:
 
 > dump 1 all nc 100 traj.nc type x y z vx vy vz  
 > dump_modify 1 append yes at -1 global c_thermo_pe c_thermo_temp c_thermo_press
+
+> dump 1 all nc/mpiio 1000 traj.nc id type x y z
 
 INSTALLATION
 ------------
@@ -68,15 +73,15 @@ In your LAMMPS src directory type:
 > git clone https://github.com/pastewka/lammps-netcdf.git USER-DUMP-NC  
 > make yes-user-dump-nc
 
-Note that LAMMPS will need to be linked to NetCDF. This will require a
-modification of your favorite makefile. Please add
+Note that LAMMPS will need to be linked to NetCDF and Parallel netCDF. This
+will require a modification of your favorite makefile. Please add
 
-> EXTRA_INC += $(shell nc-config --cflags)  
-> EXTRA_LIB += $(shell nc-config --libs)
+> EXTRA_INC += $(shell nc-config --cflags) -I/path/to/parallel-netcdf/include
+> EXTRA_LIB += $(shell nc-config --libs) -L/path/to/parallel-netcdf/lib -Lpnetcdf
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 OTHER NOTES
 -----------
 
-This is package is known to work with LAMMPS 13May14.
+This is package is known to work with LAMMPS 15Aug14.
