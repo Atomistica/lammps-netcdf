@@ -58,10 +58,12 @@ MPI-IO and has better performance on a larger number of processors. Note that
 'nc' outputs all atoms sorted by tag while 'nc/mpiio' outputs in order of the
 MPI rank.
 
-Examples:
+Example 1:
 
 > dump 1 all nc 100 traj.nc type x y z vx vy vz  
 > dump_modify 1 append yes at -1 global c_thermo_pe c_thermo_temp c_thermo_press
+
+Example 2:
 
 > dump 1 all nc/mpiio 1000 traj.nc id type x y z
 
@@ -73,15 +75,19 @@ In your LAMMPS src directory type:
 > git clone https://github.com/pastewka/lammps-netcdf.git USER-DUMP-NC  
 > make yes-user-dump-nc
 
-Note that LAMMPS will need to be linked to NetCDF and Parallel netCDF. This
-will require a modification of your favorite makefile. Please add
+Note that LAMMPS needs to be linked to NetCDF (for 'dump nc') and Parallel
+netCDF (for 'dump nc/mpiio'). This requires a modification of your favorite
+makefile. Please add
 
-> EXTRA_INC += $(shell nc-config --cflags) -I/path/to/parallel-netcdf/include
+> EXTRA_INC += $(shell nc-config --cflags) -I/path/to/parallel-netcdf/include  
 > EXTRA_LIB += $(shell nc-config --libs) -L/path/to/parallel-netcdf/lib -Lpnetcdf
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
 OTHER NOTES
 -----------
+
+NetCDF: http://www.unidata.ucar.edu/software/netcdf/  
+Parallel netCDF: http://trac.mcs.anl.gov/projects/parallel-netcdf/
 
 This is package is known to work with LAMMPS 15Aug14.
