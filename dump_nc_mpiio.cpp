@@ -684,17 +684,14 @@ void DumpNCMPIIO::write()
 
   // pack my data into buf
 
-  printf("pack...\n");
   pack(NULL);
 
   // each process writes its data
 
-  printf("write_data...\n");
   write_data(nme, buf);
 
   // close file. this ensures data is flushed and mimized data corruption
 
-  printf("closefile...\n");
   closefile();
 }
 
@@ -807,7 +804,6 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
   stride[2] = 3;
 
   for (int i = 0; i < n_perat; i++) {
-    printf("i = %i, blocki = %i\n", i, blocki);
     int iaux = perat[i].field[0];
 
     if (vtype[iaux] == INT) {
