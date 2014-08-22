@@ -219,7 +219,7 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
 
   double_precision = false;
 
-  framei = -1;
+  framei = 0;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -369,11 +369,10 @@ void DumpNC::openfile()
     
       size_t nframes;
       NCERR( nc_inq_dimlen(ncid, frame_dim, &nframes) );
-      // -1 means append to the end, -2 means override last frame, etc.
+      // framei == -1 means append to file, == -2 means override last frame
       // Note that in the input file this translates to 'yes', '-1', etc.
       if (framei < 0)  framei = nframes+framei+1;
-      else  framei -= 1; // first frame is '1' in input file
-      if (framei < 0)  framei = 0;
+      if (framei < 1)  framei = 1;
     }
     else {
       int dims[NC_MAX_VAR_DIMS];
@@ -614,7 +613,7 @@ void DumpNC::openfile()
       count[1] = 5;
       NCERR( nc_put_vara_text(ncid, cell_angular_var, index, count, "gamma") );
     
-      framei = 0;
+      framei = 1;
     }
   }
 }
@@ -628,7 +627,7 @@ void DumpNC::closefile()
     singlefile_opened = 0;
     // append next time DumpNC::openfile is called
     append_flag = 1;
-    // when file is close, first frame is 1
+    // write to next frame upon next open
     framei++;
   }
 }
@@ -648,7 +647,7 @@ void DumpNC::write()
 
   size_t start[2];
 
-  start[0] = framei;
+  start[0] = framei-1;
   start[1] = 0;
 
   for (int i = 0; i < n_perframe; i++) {
@@ -709,7 +708,7 @@ void DumpNC::write_header(bigint n)
 {
   size_t start[2];
 
-  start[0] = framei;
+  start[0] = framei-1;
   start[1] = 0;
 
   if (filewriter) {
@@ -802,7 +801,7 @@ void DumpNC::write_data(int n, double *mybuf)
                        "DumpNC::double_buffer");
   }
 
-  start[0] = framei;
+  start[0] = framei-1;
   start[1] = blocki;
   start[2] = 0;
 
@@ -910,11 +909,6 @@ void DumpNC::write_data(int n, double *mybuf)
   }
 
   blocki += n;
-
-  if (blocki >= ndata) {
-    NCERR( nc_sync(ncid) );
-    framei++;
-  }
 }
 
 /* ---------------------------------------------------------------------- */
