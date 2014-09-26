@@ -334,37 +334,14 @@ void DumpNC::openfile()
             xtype = NC_FLOAT;
         }
     
-        if (perat[i].constant) {
-          // this quantity will only be written once
-          if (perat[i].dims == 3)
-            // this is needed to store x-, y- and z-coordinates
-            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
-		    perat[i].name );
-          else
-            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
-		    perat[i].name);
-        }
-        else {
-          if (perat[i].dims == 3)
-            // this is needed to store x-, y- and z-coordinates
-            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
-		    perat[i].name );
-          else
-            NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
-		    perat[i].name );
-        }
+        NCERRX( nc_inq_varid(ncid, perat[i].name, &perat[i].var),
+                perat[i].name );
       }
 
       // perframe variables
       for (int i = 0; i < n_perframe; i++) {
-        if (perframe[i].type == THIS_IS_A_BIGINT) {
-          NCERRX( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var),
-		  perframe[i].name );
-        }
-        else {
-          NCERRX( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var),
-		  perframe[i].name );
-        }
+        NCERRX( nc_inq_varid(ncid, perframe[i].name, &perframe[i].var),
+                perframe[i].name );
       }
     
       size_t nframes;

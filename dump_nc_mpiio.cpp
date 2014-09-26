@@ -326,25 +326,14 @@ void DumpNCMPIIO::openfile()
           xtype = NC_FLOAT;
       }
     
-      if (perat[i].dims == 3)
-        // this is needed to store x-, y- and z-coordinates
-        NCERRX( ncmpi_inq_varid(ncid, perat[i].name, &perat[i].var),
-                perat[i].name );
-      else
-        NCERRX( ncmpi_inq_varid(ncid, perat[i].name, &perat[i].var),
-                perat[i].name );
+      NCERRX( ncmpi_inq_varid(ncid, perat[i].name, &perat[i].var),
+              perat[i].name );
     }
 
     // perframe variables
     for (int i = 0; i < n_perframe; i++) {
-      if (perframe[i].type == THIS_IS_A_BIGINT) {
-        NCERRX( ncmpi_inq_varid(ncid, perframe[i].name, &perframe[i].var),
-                perframe[i].name );
-      }
-      else {
-        NCERRX( ncmpi_inq_varid(ncid, perframe[i].name, &perframe[i].var),
-                perframe[i].name );
-      }
+      NCERRX( ncmpi_inq_varid(ncid, perframe[i].name, &perframe[i].var),
+              perframe[i].name );
     }
     
     MPI_Offset nframes;
