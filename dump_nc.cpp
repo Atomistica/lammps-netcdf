@@ -1,10 +1,10 @@
 /* ======================================================================
    LAMMPS NetCDF dump style
    https://github.com/pastewka/lammps-netcdf
-   Lars Pastewka, lars.pastewka@iwm.fraunhofer.de, and others
-   See the AUTHORS file in the top-level Atomistica directory.
+   Lars Pastewka, lars.pastewka@kit.edu
 
    Copyright (2011-2013) Fraunhofer IWM
+   Copyright (2014) Karlsruhe Institute of Technology
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by

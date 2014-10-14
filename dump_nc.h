@@ -1,10 +1,10 @@
 /* ======================================================================
    LAMMPS NetCDF dump style
    https://github.com/pastewka/lammps-netcdf
-   Lars Pastewka, lars.pastewka@iwm.fraunhofer.de, and others
-   See the AUTHORS file in the top-level Atomistica directory.
+   Lars Pastewka, lars.pastewka@kit.edu
 
    Copyright (2011-2013) Fraunhofer IWM
+   Copyright (2014) Karlsruhe Institute of Technology
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ class DumpNC : public DumpCustom {
 
   int frame_dim;
   int spatial_dim;
-  int Voigt_dim;
+  int vec_dim[MAX_VEC_SIZE];
   int atom_dim;
   int cell_spatial_dim;
   int cell_angular_dim;
