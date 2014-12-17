@@ -4,13 +4,14 @@ LAMMPS-NETCDF
 The files in this directory are a user-contributed package for LAMMPS.
 
 The person who created these files is Lars Pastewka at
-Fraunhofer IWM (lars.pastewka@iwm.fraunhofer.de).
+Karlsruhe Institute of Technology (lars.pastewka@kit.edu).
 Contact him directly if you have questions.
 
 Lars Pastewka  
-Fraunhofer-Institut für Werkstoffmechanik IWM  
-Wöhlerstraße 11, 79108 Freiburg  
-e-mail: lars.pastewka@iwm.fraunhofer.de  
+Institute for Applied Materials (IAM)
+Karlsruhe Institute of Technology (KIT)
+Kaiserstraße 12, 76131 Karlsruhe
+e-mail: lars.pastewka@kit.edu
 
 PACKAGE DESCRIPTION
 -------------------
