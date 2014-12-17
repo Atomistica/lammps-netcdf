@@ -8,9 +8,9 @@ Karlsruhe Institute of Technology (lars.pastewka@kit.edu).
 Contact him directly if you have questions.
 
 Lars Pastewka  
-Institute for Applied Materials (IAM)
-Karlsruhe Institute of Technology (KIT)
-Kaiserstraße 12, 76131 Karlsruhe
+Institute for Applied Materials (IAM)  
+Karlsruhe Institute of Technology (KIT)  
+Kaiserstraße 12, 76131 Karlsruhe  
 e-mail: lars.pastewka@kit.edu
 
 PACKAGE DESCRIPTION
@@ -81,7 +81,7 @@ netCDF (for 'dump nc/mpiio'). This requires a modification of your favorite
 makefile. Please add
 
 > EXTRA_INC += $(shell nc-config --cflags) -I/path/to/parallel-netcdf/include  
-> EXTRA_LIB += $(shell nc-config --libs) -L/path/to/parallel-netcdf/lib -Lpnetcdf
+> EXTRA_LIB += $(shell nc-config --libs) -L/path/to/parallel-netcdf/lib -lpnetcdf
 
 to the respective EXTRA_INC, EXTRA_LIB section of the makefile.
 
