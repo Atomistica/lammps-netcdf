@@ -138,7 +138,6 @@ DumpNC::DumpNC(LAMMPS *lmp, int narg, char **arg) :
     // extensions to the AMBER specification
     else if (!strcmp(mangled, "type")) {
       strcpy(mangled, "atom_types");
-      constant = true;
     }
     else if (!strcmp(mangled, "xs") || !strcmp(mangled, "ys") ||
              !strcmp(mangled, "zs")) {
