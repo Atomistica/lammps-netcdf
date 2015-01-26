@@ -76,6 +76,8 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         filename, netCDF4 Dataset object, first frame, last frame
     """
 
+    test_tol = np.asarray(test_tol)
+
     data_f = zip(trajfns, map(Dataset, map(strip_fn, trajfns)))
     filtered_data_f = [ ]
 
@@ -88,7 +90,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
 
         print '... %s and %s ...' % ( fn1, fn2 )
 
-        max_maxdiff = 0
+        max_maxdiff = np.zeros_like(test_tol)
         min_maxdiff = test_tol+1e12
 
         if fn2[0] == '+':
@@ -99,32 +101,36 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             maxdiff = test_tol+1.0
             first2 = -1
             while first2 < min(data2.variables[test_var].shape[0]-1, 5) and \
-                      maxdiff > test_tol:
+                      np.any(maxdiff > test_tol):
                 first2 += 1
                 # Last element in previous file
                 last1 = data1.variables[test_var].shape[0]-1
                 # Maximum difference in test variable
-                maxdiff = np.max(np.abs(data1.variables[test_var][last1] - 
-                                        data2.variables[test_var][first2]))
-                while last1 >= 0 and maxdiff > test_tol:
+                maxdiff = np.abs(data1.variables[test_var][last1] - 
+                                 data2.variables[test_var][first2])
+                if test_tol.shape == ():
+                    maxdiff = np.max(maxdiff)
+                while last1 >= 0 and np.any(maxdiff > test_tol):
                     #print 'Frame %i of %s does not agree with frame %i of %s ' \
                     #      '(maximum difference %e). Checking frame %i.' % \
                     #      ( last1, fn1, first2, fn2, maxdiff, last1-1 )
-                    max_maxdiff = max(maxdiff, max_maxdiff)
-                    min_maxdiff = min(maxdiff, min_maxdiff)
+                    max_maxdiff = np.maximum(maxdiff, max_maxdiff)
+                    min_maxdiff = np.minimum(maxdiff, min_maxdiff)
                     last1 -= 1
                     maxdiff = np.max(np.abs(data1.variables[test_var][last1] -
                                             data2.variables[test_var][first2]))
-                max_maxdiff = max(maxdiff, max_maxdiff)
-                min_maxdiff = min(maxdiff, min_maxdiff)
+                    if test_tol.shape == ():
+                        maxdiff = np.max(maxdiff)
+                max_maxdiff = np.maximum(maxdiff, max_maxdiff)
+                min_maxdiff = np.minimum(maxdiff, min_maxdiff)
 
         # Sanity check. Frame *last1* of previous file should be identical to
         # frame 0 of current file.
         if last1 < 0:
-            raise RuntimeError('%s and %s are not consecutive. Minimum '
-                               'residual found was %e, maximum residual %e. '
-                               'It may help to increase *test_tol*.' % 
-                               ( fn1, fn2, min_maxdiff, max_maxdiff ))
+            raise RuntimeError('{} and {} are not consecutive. Minimum '
+                               'residual found was {}, maximum residual {}. '
+                               'It may help to increase *test_tol*.' \
+                               .format(fn1, fn2, min_maxdiff, max_maxdiff))
 
         # Retrieve time information. If file has no time information number
         # the individual frames consecutively.
@@ -224,8 +230,8 @@ parser.add_argument('-v', '--test_var', dest='test_var', default='coordinates',
                     help="use variable VAR to test if two frames are "
                          "identical (default: 'coordinates')",
                     metavar='VAR')
-parser.add_argument('-t', '--test_tol', dest='test_tol', type=float,
-                    default=1e-6,
+parser.add_argument('-t', '--test_tol', dest='test_tol',
+                    default='1e-6',
                     help='use tolerance TOL to test if two frames are '
                          'identical',
                     metavar='TOL')
@@ -249,6 +255,10 @@ parser.add_argument('-o', '--index-offset', dest='index_offset', type=int,
                          ' particle index (default: OFFSET=-1)',
                     metavar='OFFSET')
 arguments = parser.parse_args()
+if ',' in arguments.test_tol:
+    arguments.test_tol = np.array([float(x) for x in arguments.test_tol.split(',')])
+else:
+    arguments.test_tol = float(arguments.test_tol)
 print 'every =', arguments.every, ', test_var =', arguments.test_var, \
       ', test_tol =', arguments.test_tol, ', exclude =', arguments.exclude, \
       ', index =', arguments.index, ', index_offset =', arguments.index_offset
