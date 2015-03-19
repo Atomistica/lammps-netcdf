@@ -69,6 +69,13 @@ def strip_fn(fn):
 
 ###
 
+def fix_time(time):
+    if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
+        time = np.array(time)
+        time[0] = time[1]-(time[2]-time[1])
+    return time
+
+
 def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
     """
     Open multiple NetCDF trajectory files and check that they are in order.
@@ -98,16 +105,21 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             first2 = 0
             last1 = data1.variables[test_var].shape[0]
         else:
+            test1 = data1.variables[test_var]
+            test2 = data2.variables[test_var]
+            if test_var == time_var:
+                test1 = fix_time(test1)
+                test2 = fix_time(test2)
+
             maxdiff = test_tol+1.0
             first2 = -1
-            while first2 < min(data2.variables[test_var].shape[0]-1, 5) and \
+            while first2 < min(test2.shape[0]-1, 5) and \
                       np.any(maxdiff > test_tol):
                 first2 += 1
                 # Last element in previous file
-                last1 = data1.variables[test_var].shape[0]-1
+                last1 = test1.shape[0]-1
                 # Maximum difference in test variable
-                maxdiff = np.abs(data1.variables[test_var][last1] - 
-                                 data2.variables[test_var][first2])
+                maxdiff = np.abs(test1[last1] - test2[first2])
                 if test_tol.shape == ():
                     maxdiff = np.max(maxdiff)
                 while last1 >= 0 and np.any(maxdiff > test_tol):
@@ -117,8 +129,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
                     max_maxdiff = np.maximum(maxdiff, max_maxdiff)
                     min_maxdiff = np.minimum(maxdiff, min_maxdiff)
                     last1 -= 1
-                    maxdiff = np.max(np.abs(data1.variables[test_var][last1] -
-                                            data2.variables[test_var][first2]))
+                    maxdiff = np.max(np.abs(test1[last1] - test2[first2]))
                     if test_tol.shape == ():
                         maxdiff = np.max(maxdiff)
                 max_maxdiff = np.maximum(maxdiff, max_maxdiff)
@@ -142,8 +153,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         time = time1[data_slice]
         # Some files have a bug where the first time slot is zero. Fix by
         # assuming constant time offset between frames.
-        if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
-            time[0] = time[1]-(time[2]-time[1])
+        time = fix_time(time)
 
         if last_time is not None:
             # These files are consecutive in the test_var, but may not be
