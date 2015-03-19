@@ -83,6 +83,13 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         filename, netCDF4 Dataset object, first frame, last frame
     """
 
+    test_index = None
+    i = test_var.find('[')
+    j = test_var.find(']')
+    if i > 0 and j > 0 and i < j:
+        test_index = int(test_var[i+1:j])
+        test_var = test_var[:i]
+
     test_tol = np.asarray(test_tol)
 
     data_f = zip(trajfns, map(Dataset, map(strip_fn, trajfns)))
@@ -110,6 +117,9 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             if test_var == time_var:
                 test1 = fix_time(test1)
                 test2 = fix_time(test2)
+            if test_index is not None:
+                test1 = test1[:, test_index]
+                test2 = test2[:, test_index]
 
             maxdiff = test_tol+1.0
             first2 = -1
@@ -365,6 +375,9 @@ for trajfn, idata, data_slice, time in idata_f:
                         sys.stdout.write('=== {0}/{1} -> {2} ===\r' \
                             .format(iframe+1, n, cursor+oframe+1))
                         var_data = np.array(var[iframe])
+                        if not np.isfinite(var_data).all():
+                            print "Data is nan or inf in variable '{}' at " \
+                                  "frame {}.".format(var_str, cursor)
                         # Reorder atoms by index if exists
                         if index is not None and len(var.dimensions) > 1 and \
                             var.dimensions[1] == ATOM_DIM:
