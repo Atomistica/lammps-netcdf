@@ -338,7 +338,7 @@ for trajfn, idata, data_slice, time in idata_f:
             continue
 
         if var_str not in odata.variables:
-            if var_str in idata.dimensions:
+            if arguments.netcdf_format == 'NETCDF4' and var_str in idata.dimensions:
                 # In NETCDF4 (HDF5) there cannot be dimension and variable of
                 # the same name
                 print "= skipping variable '%s' because there is a dimension " \
