@@ -57,10 +57,6 @@
 
 #include "dump_nc.h"
 
-#include <iostream>
-using std::cout;
-using std::endl;
-
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
@@ -780,8 +776,6 @@ void DumpNC::write_data(int n, double *mybuf)
       memory->srealloc(double_buffer, n*sizeof(double),
                        "DumpNC::double_buffer");
   }
-
-  cout << "[DUMPNC] Writing to frame with index " << framei-1 << endl;
 
   start[0] = framei-1;
   start[1] = blocki;
