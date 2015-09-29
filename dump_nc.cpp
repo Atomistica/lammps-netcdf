@@ -57,6 +57,10 @@
 
 #include "dump_nc.h"
 
+#include <iostream>
+using std::cout;
+using std::endl;
+
 using namespace LAMMPS_NS;
 using namespace MathConst;
 
@@ -347,7 +351,7 @@ void DumpNC::openfile()
       NCERR( nc_inq_dimlen(ncid, frame_dim, &nframes) );
       // framei == -1 means append to file, == -2 means override last frame
       // Note that in the input file this translates to 'yes', '-1', etc.
-      if (framei < 0)  framei = nframes+framei+1;
+      if (framei < 0 || (append_flag && framei == 0))  framei = nframes+framei+1;
       if (framei < 1)  framei = 1;
     }
     else {
@@ -776,6 +780,8 @@ void DumpNC::write_data(int n, double *mybuf)
       memory->srealloc(double_buffer, n*sizeof(double),
                        "DumpNC::double_buffer");
   }
+
+  cout << "[DUMPNC] Writing to frame with index " << framei-1 << endl;
 
   start[0] = framei-1;
   start[1] = blocki;

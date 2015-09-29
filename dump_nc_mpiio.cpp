@@ -340,7 +340,7 @@ void DumpNCMPIIO::openfile()
     NCERR( ncmpi_inq_dimlen(ncid, frame_dim, &nframes) );
     // framei == -1 means append to file, == -2 means override last frame
     // Note that in the input file this translates to 'yes', '-1', etc.
-    if (framei < 0)  framei = nframes+framei+1;
+    if (framei < 0 || (append_flag && framei == 0))  framei = nframes+framei+1;
     if (framei < 1)  framei = 1;
   }
   else {
