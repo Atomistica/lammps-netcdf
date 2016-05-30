@@ -47,7 +47,7 @@ DumpStyle(nc/mpiio,DumpNCMPIIO)
 namespace LAMMPS_NS {
 
 const int NC_MPIIO_FIELD_NAME_MAX = 100;
-const int DUMP_NC_MPIIO_MAX_DIMS  = 10;
+const int DUMP_NC_MPIIO_MAX_DIMS  = 100;
 
 class DumpNCMPIIO : public DumpCustom {
  public:

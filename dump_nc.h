@@ -47,7 +47,7 @@ DumpStyle(nc,DumpNC)
 namespace LAMMPS_NS {
 
 const int NC_FIELD_NAME_MAX = 100;
-const int DUMP_NC_MAX_DIMS  = 10;
+const int DUMP_NC_MAX_DIMS  = 100;
 
 class DumpNC : public DumpCustom {
  public:
