@@ -69,11 +69,14 @@ def strip_fn(fn):
 
 ###
 
-def fix_time(time):
-    if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
+def fix_time(time, dtime=None):
+    time = time[:].copy()
+    if len(time) > 2:
+        dtime = time[-1]-time[-2]
+    if len(time) > 1 and abs(dtime-(time[1]-time[0])) > 1e-3:
         time = np.array(time)
-        time[0] = time[1]-(time[2]-time[1])
-    return time
+        time[0] = time[1]-dtime
+    return time, dtime
 
 
 def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
@@ -97,6 +100,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
 
     fn2, data2 = data_f[0]
     last_time = None
+    dtime = None
     first1 = 0
     for i in range(len(data_f)-1):
         fn1, data1 = data_f[i]
@@ -115,8 +119,8 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             test1 = data1.variables[test_var]
             test2 = data2.variables[test_var]
             if test_var == time_var:
-                test1 = fix_time(test1)
-                test2 = fix_time(test2)
+                test1, dummy = fix_time(test1)
+                test2, dummy = fix_time(test2)
             if test_index is not None:
                 test1 = test1[:, test_index]
                 test2 = test2[:, test_index]
@@ -156,14 +160,13 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         # Retrieve time information. If file has no time information number
         # the individual frames consecutively.
         if time_var in data1.variables:
-            time1 = data1.variables[time_var]
+            # Some files have a bug where the first time slot is zero. Fix by
+            # assuming constant time offset between frames.
+            time1, dtime = fix_time(data1.variables[time_var], dtime=dtime)
         else:
             time1 = np.arange(data1.variables[test_var].shape[0])
         data_slice = slice(first1, last1)
         time = time1[data_slice]
-        # Some files have a bug where the first time slot is zero. Fix by
-        # assuming constant time offset between frames.
-        time = fix_time(time)
 
         if last_time is not None:
             # These files are consecutive in the test_var, but may not be
@@ -181,13 +184,11 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         first1 = first2
 
     if time_var in data2.variables:
-        time = data2.variables[time_var][:]
+        # Some files have a bug where the first time slot is zero. Fix by
+        # assuming constant time offset between frames.
+        time, dtime = fix_time(data2.variables[time_var][:], dtime)
     else:
         time = np.arange(data2.variables[test_var].shape[0])
-    # Some files have a bug where the first time slot is zero. Fix by
-    # assuming constant time offset between frames.
-    if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
-        time[0] = time[1]-(time[2]-time[1])
 
     if last_time is not None:
         # These files are consecutive in the test_var, but may not be
