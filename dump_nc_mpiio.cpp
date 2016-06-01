@@ -784,6 +784,12 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
   start[1] = blocki;
   start[2] = 0;
 
+  if (n == 0) {
+    /* If there is no data, we need to make sure the start values don't exceed
+       dimension bounds. Just set them to zero. */
+    start[1] = 0;
+  }
+
   count[0] = 1;
   count[1] = n;
   count[2] = 1;
@@ -808,8 +814,8 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
             }
       
             start[2] = idim;
-            NCERR( ncmpi_put_vars_int_all(ncid, perat[i].var, start, count,
-                                            stride, int_buffer) );
+            NCERRX( ncmpi_put_vars_int_all(ncid, perat[i].var, start, count,
+                                           stride, int_buffer), perat[i].name );
           }
         }
       }
@@ -818,8 +824,8 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
             int_buffer[j] = mybuf[iaux];
         }
 
-        NCERR( ncmpi_put_vara_int_all(ncid, perat[i].var, start, count,
-                                      int_buffer) );
+        NCERRX( ncmpi_put_vara_int_all(ncid, perat[i].var, start, count,
+                                       int_buffer), perat[i].name );
       }
     }
     else {
@@ -835,8 +841,8 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
             }
       
             start[2] = idim;
-            NCERR( ncmpi_put_vars_double_all(ncid, perat[i].var, start, count,
-                                             stride, double_buffer) );
+            NCERRX( ncmpi_put_vars_double_all(ncid, perat[i].var, start, count,
+                                              stride, double_buffer), perat[i].name );
           }
         }
       }
@@ -845,8 +851,8 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
             double_buffer[j] = mybuf[iaux];
         }
 
-        NCERR( ncmpi_put_vara_double_all(ncid, perat[i].var, start, count,
-                                         double_buffer) );
+        NCERRX( ncmpi_put_vara_double_all(ncid, perat[i].var, start, count,
+                                          double_buffer), perat[i].name );
       }
     }
   }
