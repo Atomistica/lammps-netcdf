@@ -26,6 +26,8 @@
 Join a individual NetCDF trajectory files into a single one.
 """
 
+from __future__ import print_function, division
+
 import os
 import sys
 from argparse import ArgumentParser
@@ -69,11 +71,14 @@ def strip_fn(fn):
 
 ###
 
-def fix_time(time):
-    if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
+def fix_time(time, dtime=None):
+    time = time[:].copy()
+    if len(time) > 2:
+        dtime = time[-1]-time[-2]
+    if len(time) > 1 and abs(dtime-(time[1]-time[0])) > 1e-3:
         time = np.array(time)
-        time[0] = time[1]-(time[2]-time[1])
-    return time
+        time[0] = time[1]-dtime
+    return time, dtime
 
 
 def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
@@ -97,12 +102,13 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
 
     fn2, data2 = data_f[0]
     last_time = None
+    dtime = None
     first1 = 0
     for i in range(len(data_f)-1):
         fn1, data1 = data_f[i]
         fn2, data2 = data_f[i+1]
 
-        print '... %s and %s ...' % ( fn1, fn2 )
+        print('... %s and %s ...' % ( fn1, fn2 ))
 
         max_maxdiff = np.zeros_like(test_tol)
         min_maxdiff = test_tol+1e12
@@ -115,8 +121,8 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             test1 = data1.variables[test_var]
             test2 = data2.variables[test_var]
             if test_var == time_var:
-                test1 = fix_time(test1)
-                test2 = fix_time(test2)
+                test1, dummy = fix_time(test1)
+                test2, dummy = fix_time(test2)
             if test_index is not None:
                 test1 = test1[:, test_index]
                 test2 = test2[:, test_index]
@@ -156,14 +162,13 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         # Retrieve time information. If file has no time information number
         # the individual frames consecutively.
         if time_var in data1.variables:
-            time1 = data1.variables[time_var]
+            # Some files have a bug where the first time slot is zero. Fix by
+            # assuming constant time offset between frames.
+            time1, dtime = fix_time(data1.variables[time_var], dtime=dtime)
         else:
             time1 = np.arange(data1.variables[test_var].shape[0])
         data_slice = slice(first1, last1)
         time = time1[data_slice]
-        # Some files have a bug where the first time slot is zero. Fix by
-        # assuming constant time offset between frames.
-        time = fix_time(time)
 
         if last_time is not None:
             # These files are consecutive in the test_var, but may not be
@@ -181,13 +186,11 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         first1 = first2
 
     if time_var in data2.variables:
-        time = data2.variables[time_var][:]
+        # Some files have a bug where the first time slot is zero. Fix by
+        # assuming constant time offset between frames.
+        time, dtime = fix_time(data2.variables[time_var][:], dtime)
     else:
         time = np.arange(data2.variables[test_var].shape[0])
-    # Some files have a bug where the first time slot is zero. Fix by
-    # assuming constant time offset between frames.
-    if len(time) > 2 and abs(time[2]-time[1]-(time[1]-time[0])) > 1e-3:
-        time[0] = time[1]-(time[2]-time[1])
 
     if last_time is not None:
         # These files are consecutive in the test_var, but may not be
@@ -279,9 +282,9 @@ if ',' in arguments.test_tol:
     arguments.test_tol = np.array([float(x) for x in arguments.test_tol.split(',')])
 else:
     arguments.test_tol = float(arguments.test_tol)
-print 'every =', arguments.every, ', test_var =', arguments.test_var, \
+print('every =', arguments.every, ', test_var =', arguments.test_var, \
       ', test_tol =', arguments.test_tol, ', exclude =', arguments.exclude, \
-      ', index =', arguments.index, ', index_offset =', arguments.index_offset
+      ', index =', arguments.index, ', index_offset =', arguments.index_offset)
 
 
 ### Sanity check
@@ -292,7 +295,7 @@ if os.path.exists('traj.nc'):
 
 ### Open input files and filter if requested
 
-print 'Opening files and checking file order...'
+print('Opening files and checking file order...')
 idata_f = open_trajs(arguments.filenames, test_var=arguments.test_var,
                      test_tol=arguments.test_tol)
 if arguments.every is not None:
@@ -306,7 +309,7 @@ odata = Dataset('traj.nc', 'w', clobber=False, format=arguments.netcdf_format)
 ### Copy global attributes
 
 for attr_str in idata_f[0][1].ncattrs():
-    print "> creating global attribute '%s'..." % attr_str
+    print("> creating global attribute '%s'..." % attr_str)
     odata.setncattr(attr_str, idata_f[0][1].getncattr(attr_str))
 
 
@@ -322,8 +325,8 @@ if arguments.exclude is not None:
 cursor = 0
 last_data = None
 for trajfn, idata, data_slice, time in idata_f:
-    print "Appending '%s' starting at frame %i..." % ( trajfn, cursor )
-    print 'File contains %i relevant time slots: ' % len(time), time
+    print("Appending '%s' starting at frame %i..." % ( trajfn, cursor ))
+    print('File contains %i relevant time slots: ' % len(time), time)
 
     index = None
     if arguments.index in idata.variables:
@@ -341,13 +344,13 @@ for trajfn, idata, data_slice, time in idata_f:
             if arguments.netcdf_format == 'NETCDF4' and var_str in idata.dimensions:
                 # In NETCDF4 (HDF5) there cannot be dimension and variable of
                 # the same name
-                print "= skipping variable '%s' because there is a dimension " \
-                      "of the same name" % var_str
+                print("= skipping variable '%s' because there is a dimension " \
+                      "of the same name" % var_str)
             else:
-                print "> creating variable '%s'..." % var_str
+                print("> creating variable '%s'..." % var_str)
                 for dim_str in var.dimensions:
                     if dim_str not in odata.dimensions:
-                        print "> creating dimension '%s'......" % dim_str
+                        print("> creating dimension '%s'......" % dim_str)
                         dim = idata.dimensions[dim_str]
                         if dim.isunlimited():
                             odata.createDimension(dim_str)
@@ -356,8 +359,8 @@ for trajfn, idata, data_slice, time in idata_f:
                 odata.createVariable(var_str, var.dtype, var.dimensions)
                 ovar = odata.variables[var_str]
                 for attr_str in var.ncattrs():
-                    print "> creating attribute '%s' of variable '%s'..." % \
-                          ( attr_str, var_str )
+                    print("> creating attribute '%s' of variable '%s'..." % \
+                          ( attr_str, var_str ))
                     ovar.setncattr(attr_str, var.getncattr(attr_str))
 
     for var_str, var in idata.variables.iteritems():
@@ -366,7 +369,7 @@ for trajfn, idata, data_slice, time in idata_f:
 
         if var_str not in idata.dimensions:
             if var.dimensions[0] == FRAME_DIM:
-                print "Copying variable '%s'..." % var_str
+                print("Copying variable '%s'..." % var_str)
                 if var_str == 'time':
                     odata.variables[var_str][cursor:] = time
                 else:
@@ -376,8 +379,8 @@ for trajfn, idata, data_slice, time in idata_f:
                             .format(iframe+1, n, cursor+oframe+1))
                         var_data = np.array(var[iframe])
                         if not np.isfinite(var_data).all():
-                            print "Data is nan or inf in variable '{}' at " \
-                                  "frame {}.".format(var_str, cursor)
+                            print("Data is nan or inf in variable '{}' at " \
+                                  "frame {}.".format(var_str, cursor))
                         # Reorder atoms by index if exists
                         if index is not None and len(var.dimensions) > 1 and \
                             var.dimensions[1] == ATOM_DIM:
@@ -388,11 +391,11 @@ for trajfn, idata, data_slice, time in idata_f:
                         odata.variables[var_str][cursor+oframe] = var_data
             else:
                 if not last_data or var_str not in last_data.variables:
-                    print "Copying variable '%s'..." % var_str
+                    print("Copying variable '%s'..." % var_str)
                     odata.variables[var_str][:] = var[:]
                 else:
-                    print "Checking variable '%s' for consistency across files..."%\
-                          var_str
+                    print("Checking variable '%s' for consistency across files..."%\
+                          var_str)
                     if np.any(last_data.variables[var_str][:] != var[:]):
                         raise RuntimeError("Data for per-file variable '%s' "
                                            "differs in '%s' and '%s'." % 
@@ -405,4 +408,4 @@ for trajfn, idata, data_slice, time in idata_f:
     last_data = idata
 last_data.close()
 odata.close()
-print 'Successfully wrote {0} frames.'.format(cursor)
+print('Successfully wrote {0} frames.'.format(cursor))
