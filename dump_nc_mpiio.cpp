@@ -585,8 +585,6 @@ void DumpNCMPIIO::closefile()
 
 void DumpNCMPIIO::write()
 {
-  int block_sizes[comm->nprocs];
-
   // open file
 
   openfile();
@@ -655,9 +653,11 @@ void DumpNCMPIIO::write()
   // nme = # of dump lines this proc contributes to dump
 
   nme = count();
+  int *block_sizes = new int[comm->nprocs];
   MPI_Allgather(&nme, 1, MPI_INT, block_sizes, 1, MPI_INT, MPI_COMM_WORLD);
   blocki = 0;
   for (int i = 0; i < comm->me; i++)  blocki += block_sizes[i];
+  delete [] block_sizes;
 
   // insure buf is sized for packing and communicating
   // use nme to insure filewriter proc can receive info from others
@@ -679,7 +679,7 @@ void DumpNCMPIIO::write()
 
   write_data(nme, buf);
 
-  // close file. this ensures data is flushed and mimized data corruption
+  // close file. this ensures data is flushed and minimizes data corruption
 
   closefile();
 }
@@ -764,19 +764,20 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
   MPI_Offset stride[NC_MAX_VAR_DIMS];
 
   if (!int_buffer) {
-    n_buffer = n;
+    n_buffer = std::max(1, n);
     int_buffer = (int *)
-      memory->smalloc(n*sizeof(int), "DumpNCMPIIO::int_buffer");
+      memory->smalloc(n_buffer*sizeof(int), "DumpNCMPIIO::int_buffer");
     double_buffer = (double *)
-      memory->smalloc(n*sizeof(double), "DumpNCMPIIO::double_buffer");
+      memory->smalloc(n_buffer*sizeof(double), "DumpNCMPIIO::double_buffer");
   }
 
   if (n > n_buffer) {
-    n_buffer = n;
+    n_buffer = std::max(1, n);
     int_buffer = (int *)
-      memory->srealloc(int_buffer, n*sizeof(int), "DumpNCMPIIO::int_buffer");
+      memory->srealloc(int_buffer, n_buffer*sizeof(int),
+                       "DumpNCMPIIO::int_buffer");
     double_buffer = (double *)
-      memory->srealloc(double_buffer, n*sizeof(double),
+      memory->srealloc(double_buffer, n_buffer*sizeof(double),
                        "DumpNCMPIIO::double_buffer");
   }
 
@@ -800,6 +801,12 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
 
   for (int i = 0; i < n_perat; i++) {
     int iaux = perat[i].field[0];
+    if (iaux < 0 || iaux >= size_one) {
+      char errmsg[1024];
+      sprintf(errmsg, "Internal error: name = %s, iaux = %i, "
+              "size_one = %i", perat[i].name, iaux, size_one);
+      error->one(FLERR,errmsg);
+    }
 
     if (vtype[iaux] == INT) {
       // integers
@@ -809,6 +816,13 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
           iaux = perat[i].field[idim];
 
           if (iaux >= 0) {
+            if (iaux >= size_one) {
+              char errmsg[1024];
+              sprintf(errmsg, "Internal error: name = %s, iaux = %i, "
+                      "size_one = %i", perat[i].name, iaux, size_one);
+              error->one(FLERR,errmsg);
+            }
+
             for (int j = 0; j < n; j++, iaux+=size_one) {
               int_buffer[j] = mybuf[iaux];
             }
@@ -836,6 +850,13 @@ void DumpNCMPIIO::write_data(int n, double *mybuf)
           iaux = perat[i].field[idim];
 
           if (iaux >= 0) {
+            if (iaux >= size_one) {
+              char errmsg[1024];
+              sprintf(errmsg, "Internal error: name = %s, iaux = %i, "
+                      "size_one = %i", perat[i].name, iaux, size_one);
+              error->one(FLERR,errmsg);
+            }
+
             for (int j = 0; j < n; j++, iaux+=size_one) {
                 double_buffer[j] = mybuf[iaux];
             }
