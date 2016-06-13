@@ -169,7 +169,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
             time1 = np.arange(data1.variables[test_var].shape[0])
         data_slice = slice(first1, last1)
         time = time1[data_slice]
-
+ 
         if last_time is not None:
             # These files are consecutive in the test_var, but may not be
             # consecutive in time. Add an offset to the time.
@@ -177,10 +177,10 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
         filtered_data_f += [ ( fn1, data1, data_slice, time ) ]
 
         # This becomes the last time of the previous file when in the loop
-        if last1 >= len(time1):
-            last_time = time[-1]+(time[-2]-time1[-1])*(len(time1)-last1+1)
+        if last1 >= len(time):
+            last_time = time[-1]+(time[-1]-time[-2])*(len(time)-last1+1)
         else:
-            last_time = time[-1]
+            last_time = time[last1]
 
         # Start next file where we think it should start
         first1 = first2
@@ -300,6 +300,15 @@ idata_f = open_trajs(arguments.filenames, test_var=arguments.test_var,
                      test_tol=arguments.test_tol)
 if arguments.every is not None:
     idata_f = filter_trajs(idata_f, arguments.every)
+
+
+# Report which time slots will be used
+print('The final merged trajectory will contains the following time slots...')
+for trajfn, idata, data_slice, time in idata_f:
+    print('--- {0}:'.format(trajfn))
+    print(time)
+
+sys.exit(999)
 
 
 # Create output file
