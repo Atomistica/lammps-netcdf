@@ -308,8 +308,6 @@ for trajfn, idata, data_slice, time in idata_f:
     print('--- {0}:'.format(trajfn))
     print(time)
 
-sys.exit(999)
-
 
 # Create output file
 odata = Dataset('traj.nc', 'w', clobber=False, format=arguments.netcdf_format)
