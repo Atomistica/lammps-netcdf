@@ -97,7 +97,7 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
 
     test_tol = np.asarray(test_tol)
 
-    data_f = zip(trajfns, map(Dataset, map(strip_fn, trajfns)))
+    data_f = list(zip(trajfns, map(Dataset, map(strip_fn, trajfns))))
     filtered_data_f = [ ]
 
     fn2, data2 = data_f[0]
@@ -336,7 +336,7 @@ for trajfn, idata, data_slice, time in idata_f:
             raise RuntimeError('*INDEX* variable must have dimensions (frame, '
                                'atom).')
 
-    for var_str, var in idata.variables.iteritems():
+    for var_str, var in idata.variables.items():
         if var_str in exclude_list:
             continue
 
@@ -363,7 +363,7 @@ for trajfn, idata, data_slice, time in idata_f:
                           ( attr_str, var_str ))
                     ovar.setncattr(attr_str, var.getncattr(attr_str))
 
-    for var_str, var in idata.variables.iteritems():
+    for var_str, var in idata.variables.items():
         if var_str in exclude_list:
             continue
 
