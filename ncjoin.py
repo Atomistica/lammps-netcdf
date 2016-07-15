@@ -178,7 +178,14 @@ def open_trajs(trajfns, time_var='time', test_var='coordinates', test_tol=1e-6):
 
         # This becomes the last time of the previous file when in the loop
         if last1 >= len(time):
-            last_time = time[-1]+(time[-1]-time[-2])*(len(time)-last1+1)
+            if len(time) >= 2:
+                last_time = time[-1]+(time[-1]-time[-2])*(len(time)-last1+1)
+            else:
+                if dtime is None:
+                    raise RuntimeError('Cannot guess correct time for file'
+                                       ' {}.'.format(fn2))
+                else:
+                    last_time = time[-1]+dtime*(len(time)-last1+1)
         else:
             last_time = time[last1]
 
