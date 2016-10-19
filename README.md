@@ -1,3 +1,13 @@
+NOTICE
+======
+
+This repository has been merged into the main LAMMPS repository. Development here
+has ceased, please head to the LAMMPS repository for a current version. `dump nc`
+and `dump nc/mpiio` can be found in the `USER-NC-DUMP` directory:
+
+https://github.com/lammps/lammps/tree/master/src/USER-NC-DUMP
+
+
 LAMMPS-NETCDF
 =============
 
