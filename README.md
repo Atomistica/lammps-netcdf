@@ -3,9 +3,9 @@ NOTICE
 
 This repository has been merged into the main LAMMPS repository. Development here
 has ceased, please head to the LAMMPS repository for a current version. `dump nc`
-and `dump nc/mpiio` can be found in the `USER-NC-DUMP` directory:
+and `dump nc/mpiio` can be found in the `USER-NETCDF` directory:
 
-https://github.com/lammps/lammps/tree/master/src/USER-NC-DUMP
+https://github.com/lammps/lammps/tree/master/src/USER-NETCDF
 
 
 LAMMPS-NETCDF
@@ -20,7 +20,7 @@ Contact him directly if you have questions.
 Lars Pastewka  
 Institute for Applied Materials (IAM)  
 Karlsruhe Institute of Technology (KIT)  
-Kaiserstraﬂe 12, 76131 Karlsruhe  
+Kaiserstra√üe 12, 76131 Karlsruhe  
 e-mail: lars.pastewka@kit.edu
 
 PACKAGE DESCRIPTION
